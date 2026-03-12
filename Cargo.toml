@@ -1,0 +1,21 @@
+[package]
+name = "esp32-p4-usb-stream"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+esp-idf-sys = { version = "0.37", features = ["binstart"] }
+anyhow = "1"
+png = "0.18"
+
+[profile.release]
+panic = "abort"
+
+[build-dependencies]
+embuild = "0.33"
+
+[package.metadata.esp-idf-sys]
+esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
+extra_components = [
+    { component_dirs = ["components/bsp"], bindings_header = "src/bindings.h" },
+]

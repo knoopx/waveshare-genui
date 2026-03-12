@@ -1,0 +1,16 @@
+[build]
+target = "riscv32imafc-esp-espidf"
+
+[target.riscv32imafc-esp-espidf]
+linker = "ldproxy"
+runner = "espflash flash --monitor"
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[env]
+MCU = "esp32p4"
+ESP_IDF_VERSION = "v5.4"
+ESP_IDF_SDKCONFIG_DEFAULTS = { value = "sdkconfig.defaults", relative = true }
+ESP_IDF_TOOLS_INSTALL_DIR = "global"
+BINDGEN_EXTRA_CLANG_ARGS = "-DCFG_TUSB_MCU=907"
