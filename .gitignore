@@ -1,3 +1,5 @@
 target/
 rust_out
 result
+__pycache__/
+*.pyc

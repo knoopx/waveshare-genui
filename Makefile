@@ -5,12 +5,12 @@ ESPTOOL = $(HOME)/.espressif/python_env/idf5.3_py3.13_env/bin/python \
 PORT ?= /dev/ttyACM0
 BAUD ?= 921600
 BUILD_DIR = target/riscv32imafc-esp-espidf/release/build/esp-idf-sys-c015348ae0af317d/out/build
-ELF = target/riscv32imafc-esp-espidf/release/esp32-p4-usb-stream
+ELF = target/riscv32imafc-esp-espidf/release/waveshare-display
 BIN = $(ELF).bin
 
 # Two-pass build: first pass generates bindings (may fail), patch, then rebuild
 build:
-	@echo "Building ESP32-P4 USB Display firmware..."
+	@echo "Building Waveshare Display firmware..."
 	@cargo build --release 2>&1 || true
 	@./patch-tinyusb.sh target
 	@cargo build --release

@@ -1,5 +1,5 @@
 {
-  description = "ESP32-P4 USB Display firmware (Rust + ESP-IDF)";
+  description = "Waveshare Display — firmware and host CLI";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -47,11 +47,25 @@
       ps.pyserial
       ps.pillow
       ps.numpy
+      ps.psutil
+      ps.qrcode
     ]);
 
-    # Host CLI: stream images to the ESP32-P4 display
-    esp32-p4-stream = pkgs.writeShellScriptBin "esp32-p4-stream" ''
-      exec ${hostPython}/bin/python3 ${./host/stream.py} "$@"
+    # Host scripts as a library
+    hostScripts = pkgs.stdenvNoCC.mkDerivation {
+      name = "waveshare-display-lib";
+      src = ./host;
+      installPhase = ''
+        mkdir -p $out/lib
+        cp *.py *.json $out/lib/
+      '';
+    };
+
+    # Single unified CLI
+    waveshare-display = pkgs.writeShellScriptBin "waveshare-display" ''
+      export PYTHONPATH="${hostScripts}/lib:''${PYTHONPATH:-}"
+      export PATH="${pkgs.playerctl}/bin:$PATH"
+      exec ${hostPython}/bin/python3 ${hostScripts}/lib/waveshare_display.py "$@"
     '';
 
     # Common build inputs for firmware work
@@ -76,19 +90,19 @@
     ];
   in {
     packages.${system} = {
-      default = esp32-p4-stream;
-      cli = esp32-p4-stream;
+      default = waveshare-display;
+      waveshare-display = waveshare-display;
     };
 
     apps.${system} = {
       default = {
         type = "app";
-        program = "${esp32-p4-stream}/bin/esp32-p4-stream";
+        program = "${waveshare-display}/bin/waveshare-display";
       };
       flash = {
         type = "app";
         program = let
-          flashScript = pkgs.writeShellScript "esp32-p4-flash" ''
+          flashScript = pkgs.writeShellScript "waveshare-display-flash" ''
             set -euo pipefail
             PORT=''${1:-/dev/ttyACM0}
             BAUD=''${2:-921600}
@@ -101,7 +115,7 @@
             ./patch-tinyusb.sh target
             cargo build --release
 
-            ELF="target/riscv32imafc-esp-espidf/release/esp32-p4-usb-stream"
+            ELF="target/riscv32imafc-esp-espidf/release/waveshare-display"
             BIN="$ELF.bin"
             BUILD_DIR=$(find target/riscv32imafc-esp-espidf/release/build/esp-idf-sys-*/out/build -maxdepth 0 2>/dev/null | head -1)
 
@@ -122,7 +136,11 @@
     };
 
     devShells.${system}.default = pkgs.mkShell {
-      buildInputs = firmwareBuildInputs ++ [esp32-p4-stream];
+      buildInputs =
+        firmwareBuildInputs
+        ++ [
+          waveshare-display
+        ];
 
       shellHook = ''
         export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib"
