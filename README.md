@@ -1,6 +1,6 @@
-# ESP32-P4 USB Display
+# Waveshare Display
 
-Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it into a serial-connected display. A host computer sends PNG images over UART and the firmware decodes and renders them on the 720×720 IPS LCD.
+Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it into a serial-connected display. A host computer sends WebP images over UART and the firmware decodes and renders them on the 720×720 IPS LCD.
 
 ## Hardware
 
@@ -12,15 +12,88 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 | Connection | Single USB cable (CH343 USB-to-UART bridge) |
 | Touch | GT911 capacitive (not used by this firmware) |
 
+## Screenshots
+
+### Clock
+![Clock](screenshots/clock.png)
+
+### Weather
+![Weather](screenshots/weather.png)
+
+### System Monitor
+![System Monitor](screenshots/sysmon.png)
+
+### Now Playing
+![Now Playing](screenshots/nowplaying.png)
+
+### Email (gog)
+![Email](screenshots/mail.png)
+
+### Calendar (gog)
+![Calendar](screenshots/calendar.png)
+
+### GitHub Stats
+![GitHub Stats](screenshots/github.png)
+
+### Timer
+![Timer](screenshots/timer.png)
+
+### Gauge
+![Gauge](screenshots/gauge.png)
+
+### Notification
+![Notification](screenshots/notify.png)
+
+### QR Code
+![QR Code](screenshots/qrcode.png)
+
+### Message
+![Message](screenshots/message.png)
+
+### Progress
+![Progress](screenshots/progress.png)
+
+### Image
+![Image](screenshots/image.png)
+
+## Host CLI
+
+A single `waveshare-display` command with subcommands. All are one-shot — send a single frame and exit. Orchestrate externally with `watch`, cron, or a wrapper script.
+
+```
+waveshare-display [--port PORT] <subcommand> [options]
+```
+
+Default port: `/dev/ttyACM0`. Override with `--port` / `-p`.
+
+| Subcommand | Example | Description |
+|------------|---------|-------------|
+| **image** | `waveshare-display image photo.jpg` | Send image or directory |
+| **message** | `waveshare-display message "Hello" --size 64` | Fullscreen text |
+| **notify** | `waveshare-display notify "Title" "Body" --icon $'\uf058' --accent green` | Notification with Nerd Font icon |
+| **clock** | `waveshare-display clock --24h` | Current time and date |
+| **weather** | `waveshare-display weather --location Barcelona` | Weather via wttr.in |
+| **sysmon** | `waveshare-display sysmon` | CPU, RAM, disk gauges + details |
+| **nowplaying** | `waveshare-display nowplaying` | MPRIS media info via playerctl |
+| **mail** | `waveshare-display mail` | Unread emails via gog CLI |
+| **calendar** | `waveshare-display calendar` | Today's events via gog CLI |
+| **github** | `waveshare-display github owner/repo [...]` | Repo stars, forks, issues (up to 4) |
+| **timer** | `waveshare-display timer --remaining 90 --total 120 --label Deploy` | Countdown ring |
+| **gauge** | `waveshare-display gauge -g "CPU:73:%" -g "RAM:4/8:GB"` | 1–4 arc gauges |
+| **qrcode** | `waveshare-display qrcode "https://..." --label Title` | QR code display |
+| **progress** | `waveshare-display progress -i "Build:75:100" -i "Test:90%" --style bar` | Progress bars or circles |
+
+All subcommands support `--fg`, `--bg`, `--accent` color customization (name or `#RRGGBB`).
+
 ## Protocol
 
-PNG-compressed frames are sent over UART at 921600 baud using a chunked protocol with flow control:
+WebP-compressed frames are sent over UART at 921600 baud using a chunked protocol with flow control:
 
 ```
 Header (12 bytes):
   Offset  Size  Field
-  0       4     Magic: "DPNG" (ASCII)
-  4       4     PNG data length (u32 LE)
+  0       4     Magic: "DWBP" (ASCII)
+  4       4     WebP data length (u32 LE)
   8       2     Chunk size (u16 LE, typically 4096)
   10      2     Reserved (set to 0)
 
@@ -30,7 +103,7 @@ Flow:
   For each chunk:
     Host → Device: chunk bytes
     Device → Host: 0x01 (ACK)
-  Device decodes PNG, blits to framebuffer
+  Device decodes WebP, blits to framebuffer
   Device → Host: 0x01 (done)
 ```
 
@@ -44,48 +117,23 @@ Flow:
 ### Compile and flash
 
 ```bash
-# Enter dev shell and build + flash
 nix develop path:. --command make flash
-
-# Or step by step:
-nix develop path:. --command make build
-nix develop path:. --command make flash PORT=/dev/ttyACM0
 ```
 
-The two-pass build is handled automatically: first pass generates bindings, `patch-tinyusb.sh` fixes them, second pass compiles the firmware.
-
-### Flash only (via nix app)
+### Run
 
 ```bash
-nix run path:.#flash
-```
+# Via nix run (default port /dev/ttyACM0)
+nix run path:. -- clock --24h
 
-## Host CLI
+# In dev shell
+nix develop path:.
+waveshare-display clock --24h
+waveshare-display sysmon
+waveshare-display image photo.jpg
 
-### Install
-
-```bash
-nix build path:.
-# Binary at ./result/bin/esp32-p4-stream
-```
-
-Or run directly:
-
-```bash
-nix run path:. -- /dev/ttyACM0 --test
-```
-
-### Usage
-
-```bash
-# Test pattern (color bars):
-esp32-p4-stream /dev/ttyACM0 --test
-
-# Send an image (auto-resized to fit 720×720, aspect ratio preserved):
-esp32-p4-stream /dev/ttyACM0 photo.jpg
-
-# Stream a directory of images:
-esp32-p4-stream /dev/ttyACM0 ./frames/ --fps 1
+# Custom port
+waveshare-display -p /dev/ttyUSB0 clock --24h
 ```
 
 ## Architecture
@@ -93,9 +141,9 @@ esp32-p4-stream /dev/ttyACM0 ./frames/ --fps 1
 ```
 Host (Python)                    ESP32-P4
 ┌────────────────┐    UART      ┌──────────────────┐
-│ esp32-p4-stream│ ── DPNG ───→ │ main.rs          │
-│                │ ←── ACK ──── │  ↓ PNG decode    │
-│ resize → PNG   │              │  ↓ RGB565 convert│
+│ waveshare-     │ ── DWBP ───→ │ main.rs          │
+│   display      │ ←── ACK ──── │  ↓ WebP decode   │
+│ render → WebP  │              │  ↓ RGB565 convert│
 └────────────────┘              │  ↓ blit to FB    │
                                 │  ↓ cache flush   │
                                 │ MIPI DSI → LCD   │
@@ -103,20 +151,19 @@ Host (Python)                    ESP32-P4
 ```
 
 - **`components/bsp/`** — C component: MIPI DSI display init (ST7703 vendor commands), UART driver
-- **`src/main.rs`** — Rust: PNG decoding, RGB565 conversion, framebuffer blit, chunked protocol
-- **`host/stream.py`** — Python: image loading, resize/rotate, PNG encoding, serial transmission
-- **`flake.nix`** — Nix flake: dev shell, host CLI package, flash app
+- **`src/main.rs`** — Rust: WebP decoding, RGB565 conversion, framebuffer blit, chunked protocol
+- **`host/`** — Python: `display.py` (protocol), `widgets.py` (render functions), `waveshare_display.py` (CLI)
+- **`scripts/`** — Screenshot generation
+- **`flake.nix`** — Nix flake: dev shell, CLI package, flash app
 
 ## Performance
 
 | Metric | Value |
 |--------|-------|
 | Frame size (raw) | 1012 KB (720×720 RGB565) |
-| Typical PNG size | 30-300 KB |
-| Transfer time | 0.3-3s per frame |
-| Compression ratio | 3-30× vs raw |
-
-Single USB cable, no custom drivers needed.
+| Typical WebP size | 5–60 KB |
+| Transfer time | 0.1–0.7s per frame |
+| Compression ratio | 15–200× vs raw |
 
 ## License
 
