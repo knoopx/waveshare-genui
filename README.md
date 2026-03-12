@@ -53,6 +53,15 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 ### Progress
 ![Progress](screenshots/progress.png)
 
+### Table
+![Table](screenshots/table.png)
+
+### List
+![List](screenshots/list.png)
+
+### Month Calendar
+![Month Calendar](screenshots/monthcal.png)
+
 ### Image
 ![Image](screenshots/image.png)
 
@@ -82,6 +91,9 @@ Default port: `/dev/ttyACM0`. Override with `--port` / `-p`.
 | **gauge** | `waveshare-display gauge -g "CPU:73:%" -g "RAM:4/8:GB"` | 1–4 arc gauges |
 | **qrcode** | `waveshare-display qrcode "https://..." --label Title` | QR code display |
 | **progress** | `waveshare-display progress -i "Build:75:100" -i "Test:90%" --style bar` | Progress bars or circles |
+| **table** | `waveshare-display table --json '[{"Name":"Alice","Score":"95"}]'` | Tabular data display |
+| **list** | `waveshare-display list -i "Buy milk:From store" --title "To Do"` | List with icons and secondary text |
+| **monthcal** | `waveshare-display monthcal --highlight 15 --highlight 20` | Month calendar grid |
 
 All subcommands support `--fg`, `--bg`, `--accent` color customization (name or `#RRGGBB`).
 
