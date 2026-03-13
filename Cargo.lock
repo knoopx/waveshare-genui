@@ -348,16 +348,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "waveshare-display"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "embuild",
- "esp-idf-sys",
- "image-webp",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1086,6 +1076,16 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "waveshare-display"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "embuild",
+ "esp-idf-sys",
+ "image-webp",
 ]
 
 [[package]]
