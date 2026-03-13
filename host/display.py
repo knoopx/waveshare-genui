@@ -50,21 +50,33 @@ def lerp_color(a, b, t):
 
 
 def find_font(size, bold=False):
-    suffix = "Bold" if bold else ""
     names = [
-        f"/usr/share/fonts/truetype/dejavu/DejaVuSans{'-' + suffix if suffix else ''}.ttf",
-        f"/usr/share/fonts/TTF/DejaVuSans{'-' + suffix if suffix else ''}.ttf",
-        f"/run/current-system/sw/share/X11/fonts/DejaVuSans{'-' + suffix if suffix else ''}.ttf",
+        "/run/current-system/sw/share/X11/fonts/InterVariable.ttf",
+        "/usr/share/fonts/truetype/inter/InterVariable.ttf",
+        "/usr/share/fonts/TTF/InterVariable.ttf",
     ]
     for n in names:
+        try:
+            font = ImageFont.truetype(n, size)
+            # InterVariable axes: [optical size, weight]
+            opsz = min(32, max(14, size))
+            weight = 700 if bold else 400
+            font.set_variation_by_axes([opsz, weight])
+            return font
+        except (OSError, IOError, AttributeError):
+            continue
+    # Fallback to Inter.ttc or DejaVuSans
+    fallbacks = [
+        "/run/current-system/sw/share/X11/fonts/Inter.ttc",
+        "Inter",
+        "DejaVuSans",
+    ]
+    for n in fallbacks:
         try:
             return ImageFont.truetype(n, size)
         except (OSError, IOError):
             continue
-    try:
-        return ImageFont.truetype(f"DejaVuSans{'-' + suffix if suffix else ''}", size)
-    except (OSError, IOError):
-        return ImageFont.load_default()
+    return ImageFont.load_default()
 
 
 def find_nerd_font(size):

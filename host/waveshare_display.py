@@ -168,20 +168,20 @@ def cmd_sysmon(args):
 
 
 def cmd_nowplaying(args):
-    def playerctl(prop):
+    def playerctl(*args):
         try:
             return subprocess.check_output(
-                ["playerctl", prop], stderr=subprocess.DEVNULL, timeout=2,
+                ["playerctl", *args], stderr=subprocess.DEVNULL, timeout=2,
             ).decode().strip()
         except (subprocess.SubprocessError, FileNotFoundError):
             return ""
 
     fg, bg, accent = resolve_colors(args)
-    title = playerctl("metadata title")
-    artist = playerctl("metadata artist")
-    album = playerctl("metadata album")
+    title = playerctl("metadata", "title")
+    artist = playerctl("metadata", "artist")
+    album = playerctl("metadata", "album")
     status = playerctl("status")
-    art_url = playerctl("metadata mpris:artUrl")
+    art_url = playerctl("metadata", "mpris:artUrl")
 
     data = render_nowplaying(title, artist, album, status, art_url,
                              DISPLAY_W, DISPLAY_H, bg, fg, accent)
