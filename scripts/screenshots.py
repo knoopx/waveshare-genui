@@ -18,7 +18,8 @@ from widgets import (
     render_image, render_list, render_mail, render_message,
     render_monitor, render_month_calendar, render_notify,
     render_nowplaying, render_progress, render_qrcode, render_stocks,
-    render_sysmon, render_table, render_timer, render_weather,
+    render_sysmon, render_table, render_tasks, render_timer,
+    render_weather,
 )
 
 W, H = 720, 720
@@ -143,6 +144,25 @@ events = [
      "location": "Google Meet", "attendees": 2},
 ]
 save("calendar", render_calendar(events, W, H, BG, FG, accent("base0A")))
+
+# --- tasks ---
+tasks = [
+    {"title": "Review PR #284", "due": "2026-03-12T00:00:00Z",
+     "notes": "Auth refactor — check token rotation", "status": "needsAction"},
+    {"title": "Update API docs", "due": "2026-03-13T00:00:00Z",
+     "notes": "New endpoints for batch processing", "status": "needsAction"},
+    {"title": "Fix flaky CI test", "due": "2026-03-10T00:00:00Z",
+     "notes": "", "status": "needsAction"},
+    {"title": "Deploy staging v1.2.3", "due": "2026-03-14T00:00:00Z",
+     "notes": "", "status": "needsAction"},
+    {"title": "Write migration script", "due": "",
+     "notes": "PostgreSQL 15 → 16", "status": "needsAction"},
+    {"title": "Set up monitoring alerts", "due": "2026-03-15T00:00:00Z",
+     "notes": "", "status": "completed"},
+    {"title": "Order new keyboard", "due": "",
+     "notes": "", "status": "completed"},
+]
+save("tasks", render_tasks(tasks, "My Tasks", W, H, BG, FG, accent("base0D")))
 
 # --- progress ---
 items = [parse_progress_spec(s) for s in [

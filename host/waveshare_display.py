@@ -11,7 +11,10 @@ Usage:
     waveshare-display sysmon
     waveshare-display nowplaying
     waveshare-display mail
-    waveshare-display calendar
+    waveshare-display calendar --today
+    waveshare-display calendar --days 3
+    waveshare-display tasks
+    waveshare-display tasks --show-completed
     waveshare-display github torvalds/linux facebook/react
     waveshare-display timer --remaining 90 --total 120 --label Deploy
     waveshare-display gauge -g "CPU:73:%" -g "RAM:4/8:GB"
@@ -44,8 +47,8 @@ from widgets import (
     render_image, render_list, render_mail, render_message,
     render_monitor, render_month_calendar, render_notify,
     render_nowplaying, render_progress, render_qrcode, render_stocks,
-    render_sysmon, render_table, render_test_pattern, render_timer,
-    render_weather,
+    render_sysmon, render_table, render_tasks, render_test_pattern,
+    render_timer, render_weather,
 )
 
 
@@ -215,9 +218,19 @@ def cmd_calendar(args):
         except (subprocess.SubprocessError, json.JSONDecodeError):
             return []
 
-    raw = gog_json(["calendar", "events"])
+    cal_args = ["calendar", "events"]
+    if args.today:
+        cal_args.append("--today")
+    elif args.week:
+        cal_args.append("--week")
+    elif args.days:
+        cal_args += ["--days", str(args.days)]
+    if args.max:
+        cal_args += ["--max", str(args.max)]
+
+    raw = gog_json(cal_args)
     events = []
-    for e in raw[:8]:
+    for e in raw[:args.max]:
         start = e.get("start", {})
         end = e.get("end", {})
         all_day = False
@@ -253,6 +266,56 @@ def cmd_calendar(args):
     fg, bg, accent = resolve_colors(args)
     data = render_calendar(events, DISPLAY_W, DISPLAY_H, bg, fg, accent)
     result(connect(args.port), data, f"{len(events)} events")
+
+
+def cmd_tasks(args):
+    def gog_json(gog_args):
+        try:
+            out = subprocess.check_output(
+                ["gog"] + gog_args + ["-j", "--results-only", "--no-input"],
+                stderr=subprocess.DEVNULL, timeout=15)
+            return json.loads(out)
+        except (subprocess.SubprocessError, json.JSONDecodeError):
+            return []
+
+    if args.json:
+        tasks = json.loads(args.json)
+    elif args.stdin:
+        tasks = json.loads(sys.stdin.read())
+    else:
+        # resolve task list ID
+        list_id = args.list_id
+        if not list_id:
+            lists = gog_json(["tasks", "lists", "list"])
+            if isinstance(lists, list) and lists:
+                list_id = lists[0].get("id", "")
+            elif isinstance(lists, dict):
+                tl = lists.get("tasklists", lists.get("items", []))
+                if tl:
+                    list_id = tl[0].get("id", "")
+            if not list_id:
+                print("No task lists found", file=sys.stderr)
+                sys.exit(1)
+
+        gog_args = ["tasks", "list", list_id, "--max", str(args.max)]
+        if args.show_completed:
+            gog_args += ["--show-completed", "--show-hidden"]
+        raw = gog_json(gog_args)
+        if isinstance(raw, dict):
+            raw = raw.get("tasks", raw.get("items", []))
+
+        tasks = []
+        for t in raw:
+            tasks.append({
+                "title": t.get("title", "(Untitled)"),
+                "due": t.get("due", ""),
+                "notes": t.get("notes", ""),
+                "status": t.get("status", "needsAction"),
+            })
+
+    fg, bg, accent = resolve_colors(args)
+    data = render_tasks(tasks, args.title, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    result(connect(args.port), data, f"{len(tasks)} tasks")
 
 
 def cmd_github(args):
@@ -635,7 +698,22 @@ def main():
     common_args(p)
 
     # calendar
-    p = sub.add_parser("calendar", help="Today's events via gog CLI")
+    p = sub.add_parser("calendar", help="Calendar events via gog CLI")
+    p.add_argument("--today", action="store_true", help="Today only")
+    p.add_argument("--week", action="store_true", help="This week")
+    p.add_argument("--days", type=int, default=0, help="Next N days")
+    p.add_argument("--max", type=int, default=8, help="Max events (default: 8)")
+    common_args(p)
+
+    # tasks
+    p = sub.add_parser("tasks", help="Google Tasks via gog CLI")
+    p.add_argument("--list-id", default="", help="Task list ID (default: first list)")
+    p.add_argument("--title", default="", help="Widget title (default: list name)")
+    p.add_argument("--max", type=int, default=20, help="Max tasks (default: 20)")
+    p.add_argument("--show-completed", action="store_true",
+                   help="Include completed tasks")
+    p.add_argument("--json", help="JSON array of tasks")
+    p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
     common_args(p)
 
     # github
@@ -737,7 +815,7 @@ def main():
         "image": cmd_image, "message": cmd_message, "notify": cmd_notify,
         "clock": cmd_clock, "weather": cmd_weather, "sysmon": cmd_sysmon,
         "nowplaying": cmd_nowplaying, "mail": cmd_mail, "calendar": cmd_calendar,
-        "github": cmd_github, "timer": cmd_timer, "gauge": cmd_gauge,
+        "tasks": cmd_tasks, "github": cmd_github, "timer": cmd_timer, "gauge": cmd_gauge,
         "qrcode": cmd_qrcode, "progress": cmd_progress, "table": cmd_table,
         "list": cmd_list, "departures": cmd_departures, "stocks": cmd_stocks,
         "hackernews": cmd_hackernews, "hn": cmd_hackernews,

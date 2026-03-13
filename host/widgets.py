@@ -72,8 +72,8 @@ def _draw_sep(draw, y, width, bg, fg):
 def _draw_timestamp(draw, width, height, bg, fg, fmt="%H:%M"):
     font = find_font(22)
     ts = datetime.now().strftime(fmt)
-    tw, _ = text_size(draw, ts, font)
-    draw.text((width - PAD - tw, height - PAD + 8), ts,
+    tw, th = text_size(draw, ts, font)
+    draw.text((width - PAD - tw, height - PAD - th), ts,
               fill=lerp_color(fg, bg, DIM), font=font)
 
 
@@ -182,6 +182,8 @@ def render_message(text: str, width: int, height: int, fg, bg,
         draw.text((x, y), line, fill=fg, font=font)
         y += line_heights[i] + spacing
 
+    _draw_timestamp(draw, width, height, bg, fg)
+
     return img_to_webp(img)
 
 
@@ -202,6 +204,8 @@ def render_notify(title: str, body: str, icon: str,
             bbox = draw.textbbox((0, 0), line or " ", font=body_font)
             draw.text((PAD, content_y), line, fill=body_fg, font=body_font)
             content_y += bbox[3] - bbox[1] + 12
+
+    _draw_timestamp(draw, width, height, bg, fg)
 
     return img_to_webp(img)
 
@@ -364,6 +368,8 @@ def render_weather(data: dict, width: int, height: int,
             ttw, _ = text_size(draw, temp_text, forecast_temp_font)
             draw.text((cx - ttw // 2, forecast_y + 80), temp_text,
                       fill=fg, font=forecast_temp_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
 
     return img_to_webp(img)
 
@@ -568,6 +574,8 @@ def render_nowplaying(title: str, artist: str, album: str,
         draw.text(((width - siw) // 2, height - PAD - 30), sicon,
                   fill=accent, font=icon_font)
 
+    _draw_timestamp(draw, width, height, bg, fg)
+
     return img_to_webp(img)
 
 
@@ -628,6 +636,8 @@ def render_timer(remaining: int, total: int, label: str,
     draw.text((cx - pw // 2, label_y), pct_str,
               fill=lerp_color(fg, bg, DIM), font=sub_font)
 
+    _draw_timestamp(draw, width, height, bg, fg)
+
     return img_to_webp(img)
 
 
@@ -672,22 +682,17 @@ def _draw_arc_gauge(draw, cx, cy, radius, pct, label, display, unit,
         draw.arc([cx - radius, cy - radius, cx + radius, cy + radius],
                  start=-225, end=-225 + sweep, fill=color, width=14)
 
-    for frac in [0, 0.25, 0.5, 0.75, 1.0]:
-        angle = math.radians(-225 + 270 * frac)
-        r1, r2 = radius + 8, radius + 18
-        x1, y1 = cx + r1 * math.cos(angle), cy + r1 * math.sin(angle)
-        x2, y2 = cx + r2 * math.cos(angle), cy + r2 * math.sin(angle)
-        draw.line([(x1, y1), (x2, y2)], fill=lerp_color(bg, fg, 0.15), width=2)
-
     vw, vh = text_size(draw, display, value_font)
-    draw.text((cx - vw // 2, cy - vh // 2 - 12), display, fill=fg, font=value_font)
+    draw.text((cx - vw // 2, cy - vh // 2 - 8), display, fill=fg, font=value_font)
 
     uw, _ = text_size(draw, unit, unit_font)
-    draw.text((cx - uw // 2, cy + vh // 2 + 2), unit,
+    draw.text((cx - uw // 2, cy + vh // 2 + 4), unit,
               fill=lerp_color(fg, bg, MUTED), font=unit_font)
 
-    lw, _ = text_size(draw, label, label_font)
-    draw.text((cx - lw // 2, cy + radius + 16), label,
+    # Place label inside the arc opening (bottom gap between -225° and 45°)
+    lw, lh = text_size(draw, label, label_font)
+    label_y = cy + int(radius * 0.7) - lh // 2
+    draw.text((cx - lw // 2, label_y), label,
               fill=lerp_color(fg, bg, DIM), font=label_font)
 
 
@@ -719,6 +724,8 @@ def render_gauges(gauges: list[dict], width: int, height: int,
         _draw_arc_gauge(draw, cx, cy, layout["radius"],
                         g["pct"], g["label"], g["display"], g["unit"],
                         color, bg, fg, (value_font, label_font, unit_font))
+
+    _draw_timestamp(draw, width, height, bg, fg)
 
     return img_to_webp(img)
 
@@ -764,6 +771,8 @@ def render_qrcode(data: str, label: str, width: int, height: int,
     dw, _ = text_size(draw, display_data, data_font)
     draw.text(((width - dw) // 2, text_y), display_data,
               fill=lerp_color(fg, bg, DIM), font=data_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
 
     return img_to_webp(img)
 
@@ -833,6 +842,8 @@ def render_github(repos: list[dict], width: int, height: int,
                           fill=accent, font=detail_icon_font)
             draw.text((ix + icon_w + icon_gap, stat_y), val_str,
                       fill=fg, font=value_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
 
     return img_to_webp(img)
 
@@ -960,6 +971,124 @@ def render_calendar(events: list[dict], width: int, height: int,
     return img_to_webp(img)
 
 
+# --- tasks ---
+
+
+def render_tasks(tasks: list[dict], title: str,
+                 width: int, height: int, bg, fg, accent) -> bytes:
+    """Render a tasks widget.
+
+    Each task: {"title": str, "due": str?, "notes": str?, "status": str?}
+    status is "needsAction" or "completed".
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    task_font = find_font(28, bold=True)
+    due_font = find_font(22)
+    notes_font = find_font(22)
+    icon_font = find_nerd_font(26)
+    check_font = find_nerd_font(28)
+
+    header_title = title or "Tasks"
+    content_y = _draw_header(draw, width, "\uf0ae", header_title, bg, fg, accent)
+    max_text_w = width - PAD * 2 - 50
+
+    if not tasks:
+        _draw_empty_state(draw, width, height, "\uf058", "No tasks", bg, fg)
+        return img_to_webp(img)
+
+    has_notes = any(t.get("notes") for t in tasks)
+    row_h = 68 if has_notes else 52
+    max_items = (height - content_y - PAD - 20) // row_h
+
+    now = datetime.now()
+    muted = lerp_color(fg, bg, MUTED)
+    dim = lerp_color(fg, bg, DIM)
+
+    for i, task in enumerate(tasks[:max_items]):
+        y = content_y + i * row_h
+        completed = task.get("status") == "completed"
+
+        # checkbox icon
+        check_x = PAD
+        if check_font:
+            icon = "\uf058" if completed else "\uf111"
+            check_color = lerp_color(fg, bg, 0.5) if completed else accent
+            draw.text((check_x, y + 2), icon, fill=check_color, font=check_font)
+        text_x = check_x + 40
+
+        # due date on right
+        due = task.get("due", "")
+        due_x_end = width - PAD
+        due_display = ""
+        overdue = False
+        if due:
+            try:
+                due_dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
+                delta = (due_dt.date() - now.date()).days
+                if delta < 0:
+                    due_display = f"{abs(delta)}d overdue"
+                    overdue = True
+                elif delta == 0:
+                    due_display = "Today"
+                elif delta == 1:
+                    due_display = "Tomorrow"
+                elif delta < 7:
+                    due_display = due_dt.strftime("%A")
+                else:
+                    due_display = due_dt.strftime("%b %-d")
+            except (ValueError, TypeError):
+                due_display = due
+
+        if due_display:
+            dw, _ = text_size(draw, due_display, due_font)
+            due_color = parse_color("base08") if overdue else muted
+            draw.text((due_x_end - dw, y + 4), due_display,
+                      fill=due_color, font=due_font)
+            avail_w = due_x_end - dw - text_x - 16
+        else:
+            avail_w = due_x_end - text_x - 8
+
+        # title
+        txt = task["title"]
+        title_color = dim if completed else fg
+        while text_size(draw, txt, task_font)[0] > avail_w and len(txt) > 4:
+            txt = txt[:-4] + "…"
+        draw.text((text_x, y), txt, fill=title_color, font=task_font)
+
+        # strikethrough for completed
+        if completed:
+            tw, th = text_size(draw, txt, task_font)
+            strike_y = y + th // 2 + 2
+            draw.line([text_x, strike_y, text_x + tw, strike_y],
+                      fill=dim, width=2)
+
+        # notes
+        if task.get("notes") and not completed:
+            note = task["notes"].replace("\n", " ")
+            while text_size(draw, note, notes_font)[0] > avail_w and len(note) > 4:
+                note = note[:-4] + "…"
+            draw.text((text_x, y + 32), note, fill=muted, font=notes_font)
+
+        # separator
+        if i < min(len(tasks), max_items) - 1:
+            sep_y = y + row_h - 4
+            draw.line([text_x, sep_y, width - PAD, sep_y],
+                      fill=lerp_color(bg, fg, SEP), width=1)
+
+    shown = min(len(tasks), max_items)
+    if len(tasks) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(tasks)} tasks"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=dim, font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
 # --- progress ---
 
 def parse_progress_spec(spec: str) -> dict:
@@ -1008,13 +1137,14 @@ def render_progress(items: list[dict], style: str, title: str,
     else:
         _draw_progress_bars(draw, items, content_y, width, height, bg, fg)
 
+    _draw_timestamp(draw, width, height, bg, fg)
+
     return img_to_webp(img)
 
 
 def _draw_progress_bars(draw, items, start_y, width, height, bg, fg):
     label_font = find_font(28, bold=True)
     value_font = find_font(26)
-    pct_font = find_font(24)
 
     n = len(items)
     available = height - start_y - PAD
@@ -1050,15 +1180,7 @@ def _draw_progress_bars(draw, items, start_y, width, height, bg, fg):
             draw.ellipse([bar_x0, bar_y, bar_x0 + bar_h, bar_y + bar_h],
                          fill=color)
 
-        pct_str = f"{int(item['pct'])}%"
-        pw, _ = text_size(draw, pct_str, pct_font)
-        pct_x = bar_x0 + fill_w + 8
-        if pct_x + pw > bar_x1:
-            pct_x = bar_x0 + fill_w - pw - 8
-            pct_color = fg if item["pct"] > 20 else lerp_color(fg, bg, DIM)
-        else:
-            pct_color = lerp_color(fg, bg, DIM)
-        draw.text((pct_x, bar_y - 1), pct_str, fill=pct_color, font=pct_font)
+
 
 
 def _draw_progress_circles(draw, items, start_y, width, height, bg, fg):
