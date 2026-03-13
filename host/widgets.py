@@ -50,15 +50,18 @@ def _draw_header(draw, width, icon, title, bg, fg, accent,
         title_font = find_font(32, bold=True)
 
     ty = HEADER_Y
-    _, th = text_size(draw, title, title_font)
+    tbbox = draw.textbbox((0, 0), title, font=title_font)
     if icon_font:
-        _, ih = text_size(draw, icon, icon_font)
-        draw.text((PAD, ty + (th - ih) // 2), icon, fill=accent, font=icon_font)
+        ibbox = draw.textbbox((0, 0), icon, font=icon_font)
+        t_mid = ty + tbbox[1] + (tbbox[3] - tbbox[1]) // 2
+        i_h = ibbox[3] - ibbox[1]
+        draw.text((PAD, t_mid - i_h // 2 - ibbox[1]), icon, fill=accent, font=icon_font)
     draw.text((PAD + 48, ty), title, fill=fg, font=title_font)
 
     if right_text and right_font:
         rw, rh = text_size(draw, right_text, right_font)
-        draw.text((width - PAD - rw, ty + (th - rh) // 2), right_text,
+        t_h = tbbox[3] - tbbox[1]
+        draw.text((width - PAD - rw, ty + (t_h - rh) // 2), right_text,
                   fill=lerp_color(fg, bg, DIM), font=right_font)
 
     sep_y = HEADER_SEP_Y
@@ -1023,10 +1026,12 @@ def render_tasks(tasks: list[dict], title: str,
 
         # checkbox icon
         check_x = PAD
+        _, title_h = text_size(draw, task["title"], task_font)
         if check_font:
             icon = "\uf058" if completed else "\uf111"
             check_color = lerp_color(fg, bg, 0.5) if completed else accent
-            draw.text((check_x, y + 2), icon, fill=check_color, font=check_font)
+            _, ih = text_size(draw, icon, check_font)
+            draw.text((check_x, y + (title_h - ih) // 2), icon, fill=check_color, font=check_font)
         text_x = check_x + 40
 
         # due date on right
