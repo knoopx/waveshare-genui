@@ -6,7 +6,7 @@
  */
 import React from "react";
 import { emit } from "../src/openui-emitter";
-import { Canvas, Header, Content, Stack, Text, StatusDot, Separator, Timestamp } from "../src/components";
+import { Canvas, Header, Content, Stack, Text, StatusDot, Separator, Spacer, Timestamp } from "../src/components";
 const argv = process.argv.slice(2);
 const siteSpecs: string[] = [];
 let timeout = 5;
@@ -51,12 +51,13 @@ function msColor(r: Result): "green" | "yellow" | "red" {
 const rows: React.ReactElement[] = [];
 results.forEach((r, i) => {
   rows.push(
-    <Stack direction="row" gap="m" align="center">
+    <Stack direction="row" gap="md" align="center">
       <StatusDot up={r.up} />
-      <Stack>
+      <Stack gap="none">
         <Text content={r.name} size="md" weight="bold" />
         <Text content={new URL(r.url).hostname} size="sm" color="muted" />
       </Stack>
+      <Spacer />
       <Text content={r.up ? `${r.ms}ms` : "DOWN"} size="md" weight="bold" color={msColor(r)} />
     </Stack>,
   );

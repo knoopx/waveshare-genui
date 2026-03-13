@@ -22,9 +22,9 @@ const date = now.toLocaleDateString("en-US", {
 
 emit(
   <Canvas>
-    <Stack direction="column" gap="l" align="center" justify="center">
+    <Stack direction="column" gap="lg" align="center" justify="center">
       <Text content={time} size="3xl" weight="bold" />
-      <Stack direction="row" gap="s" align="center">
+      <Stack direction="row" gap="sm" align="center">
         <Icon glyph={"\uf073"} color="accent" size={36} />
         <Text content={date} size="lg" color="muted" />
       </Stack>

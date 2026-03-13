@@ -6,7 +6,7 @@
  */
 import React from "react";
 import { emit } from "../src/openui-emitter";
-import { Canvas, Header, Content, List, ListItem, Timestamp } from "../src/components";
+import { Canvas, Header, Content, List, ListItem, Text, Timestamp } from "../src/components";
 const argv = process.argv.slice(2);
 let stationId = "";
 let stationName = "Departures";
@@ -43,14 +43,18 @@ emit(
   <Canvas>
     <Header icon={"\uf238"} title={stationName} />
     <Content>
-      <List>
-        {departures.map((d) => {
-          const delayStr = d.delay > 0 ? ` · +${d.delay} min` : "";
-          return (
-            <ListItem text={d.destination} secondary={`${d.line} · ${d.time}${delayStr}`} icon={"\uf238"} />
-          );
-        })}
-      </List>
+      {departures.length > 0 ? (
+        <List>
+          {departures.map((d) => {
+            const delayStr = d.delay > 0 ? ` · +${d.delay} min` : "";
+            return (
+              <ListItem text={d.destination} secondary={`${d.line} · ${d.time}${delayStr}`} icon={"\uf238"} />
+            );
+          })}
+        </List>
+      ) : (
+        <Text content="No departures" size="lg" color="muted" align="center" />
+      )}
     </Content>
     <Timestamp />
   </Canvas>,

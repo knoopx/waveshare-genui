@@ -2,14 +2,15 @@
 /**
  * Progress bars — from disk usage or custom values.
  *
- * Usage: progress.tsx                                   (auto: disk usage)
- *        progress.tsx -i "Build:75:100" -i "Tests:42:50" [--title "CI Pipeline"]
+ * Usage: progress.tsx                                              (auto: disk usage)
+ *        progress.tsx -i "Build:75:100" -i "Tests:42:50:green"    (custom with optional color)
+ *        progress.tsx --title "CI Pipeline" -i "Deploy:30:100:orange"
  */
 import React from "react";
 import { emit } from "../src/openui-emitter";
 import { execSync } from "child_process";
 import { Canvas, Header, Content, Stack, ProgressBar, Timestamp } from "../src/components";
-type Bar = { label: string; value: number; max: number; display: string };
+type Bar = { label: string; value: number; max: number; display: string; color?: string };
 
 const argv = process.argv.slice(2);
 const specs: string[] = [];
@@ -23,10 +24,10 @@ let bars: Bar[];
 
 if (specs.length > 0) {
   bars = specs.map((s) => {
-    const [label, val, max] = s.split(":");
+    const [label, val, max, color] = s.split(":");
     const v = parseFloat(val);
-    const m = parseFloat(max);
-    return { label, value: v, max: m, display: `${v}/${m}` };
+    const m = parseFloat(max ?? "100");
+    return { label, value: v, max: m, display: `${v}/${m}`, color: color || undefined };
   });
 } else {
   title = title || "Disk Usage";
@@ -42,9 +43,9 @@ emit(
   <Canvas>
     <Header icon={"\uf0a0"} title={title || "Progress"} />
     <Content>
-      <Stack direction="column" gap="l">
+      <Stack direction="column" gap="lg">
         {bars.map((b) => (
-          <ProgressBar label={b.label} value={b.value} max={b.max} display={b.display} />
+          <ProgressBar label={b.label} value={b.value} max={b.max} display={b.display} color={b.color} />
         ))}
       </Stack>
     </Content>

@@ -8,7 +8,7 @@ import React from "react";
 import { emit } from "../src/openui-emitter";
 import { Canvas, Header, Content, List, ListItem, Timestamp } from "../src/components";
 const argv = process.argv.slice(2);
-let count = 8;
+let count = 6;
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "--count" && argv[i + 1]) count = parseInt(argv[++i]);
 }

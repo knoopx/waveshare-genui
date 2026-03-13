@@ -36,13 +36,13 @@ const tickers = await Promise.all(symbols.map(fetchTicker));
 emit(
   <Canvas>
     <Header icon={"\uf201"} title="Market" />
-    <Content gap={14}>
+    <Content gap="sm">
       {tickers.map((t) => {
         const color = t.changePct >= 0 ? "green" : "red";
         const sign = t.changePct >= 0 ? "+" : "";
         return (
           <Card>
-            <Stack direction="row" gap="s" align="center">
+            <Stack direction="row" gap="sm" align="center">
               <Text content={t.symbol} size="md" weight="bold" color="muted" />
               <Badge label={`${sign}${t.changePct.toFixed(2)}%`} color={color} />
               <Spacer />

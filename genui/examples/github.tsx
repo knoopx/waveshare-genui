@@ -34,7 +34,7 @@ const data = await Promise.all(repos.slice(0, 4).map(fetchRepo));
 emit(
   <Canvas>
     <Header icon={"\uf09b"} title="GitHub Stats" />
-    <Content gap={14}>
+    <Content gap="sm">
       {data.map((r) => {
         const stats = [
           { icon: "\uf005", value: r.stars },
@@ -45,9 +45,9 @@ emit(
         return (
           <Card>
             <Text content={r.name} size="md" color="muted" />
-            <Stack direction="row" gap="m" align="center" justify="around">
+            <Stack direction="row" gap="md" align="center" justify="around">
               {stats.map((s) => (
-                <Stack direction="row" gap="s" align="center">
+                <Stack direction="row" gap="md" align="center">
                   <Icon glyph={s.icon} />
                   <Text content={s.value} size="md" />
                 </Stack>

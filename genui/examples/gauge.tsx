@@ -2,28 +2,32 @@
 /**
  * Arc gauges — from system stats or custom values.
  *
- * Usage: gauge.tsx                          (auto: CPU, RAM, Disk, Temp)
- *        gauge.tsx -g "CPU:73:100:%" -g "RAM:4.2:8:GB"
+ * Usage: gauge.tsx                                        (auto: CPU, RAM, Disk, Temp)
+ *        gauge.tsx -g "CPU:73:100:%" -g "RAM:4.2:8:GB"   (custom values)
+ *        gauge.tsx -g "Disk:92:100:%:orange"              (with color)
+ *        gauge.tsx --title "CI Pipeline" -g "Build:75:100:%:accent"
  */
 import React from "react";
 import { emit } from "../src/openui-emitter";
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
-import { Canvas, Stack, Gauge, Timestamp } from "../src/components";
-type GaugeData = { label: string; value: number; max: number; unit: string };
+import { Canvas, Header, Stack, Gauge, Timestamp } from "../src/components";
+type GaugeData = { label: string; value: number; max: number; unit: string; color?: string };
 
 const argv = process.argv.slice(2);
 const specs: string[] = [];
+let title = "";
 for (let i = 0; i < argv.length; i++) {
   if (argv[i] === "-g" && argv[i + 1]) specs.push(argv[++i]);
+  else if (argv[i] === "--title" && argv[i + 1]) title = argv[++i];
 }
 
 let gauges: GaugeData[];
 
 if (specs.length > 0) {
   gauges = specs.map((s) => {
-    const [label, val, max, unit] = s.split(":");
-    return { label, value: parseFloat(val), max: parseFloat(max), unit: unit ?? "%" };
+    const [label, val, max, unit, color] = s.split(":");
+    return { label, value: parseFloat(val), max: parseFloat(max), unit: unit ?? "%", color: color || undefined };
   });
 } else {
   function sh(cmd: string): string {
@@ -52,13 +56,18 @@ if (specs.length > 0) {
   ];
 }
 
+const grid = (
+  <Stack direction="row" gap="xl" align="center" justify="center" wrap>
+    {gauges.map((g) => (
+      <Gauge label={g.label} value={g.value} max={g.max} unit={g.unit} color={g.color} />
+    ))}
+  </Stack>
+);
+
 emit(
   <Canvas>
-    <Stack direction="row" gap="m" align="center" justify="center" wrap>
-      {gauges.map((g) => (
-        <Gauge label={g.label} value={g.value} max={g.max} unit={g.unit} />
-      ))}
-    </Stack>
+    {title ? <Header icon={"\uf080"} title={title} /> : null}
+    {title ? <Content>{grid}</Content> : grid}
     <Timestamp />
   </Canvas>,
 );

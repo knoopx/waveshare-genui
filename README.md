@@ -23,8 +23,10 @@ Rust firmware + generative UI toolkit for the **Waveshare ESP32-P4-WIFI6-Touch-L
 | Monitor | Gauge | Progress |
 | ![GitHub](screenshots/github.png) | ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) |
 | GitHub | Notification | Message |
-| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | |
-| Table | List | |
+| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | ![User](screenshots/user.png) |
+| Table | List | User |
+| ![System](screenshots/system.png) |  |  |
+| System |  |  |
 
 ## How It Works
 
@@ -52,10 +54,14 @@ For LLM-driven UIs, the CLI generates a **system prompt** from the component lib
 | `Header` | Accent bar + icon + title |
 | `Content` | Padded content area below header |
 | `Stack` | Flex container (row/column, gap, wrap) |
+| `Alert` | Emphasized callout with icon and message |
+| `EmptyState` | Centered no-data / fallback state |
 | `Card` | Elevated card with subtle background |
 | `Text` | Text block with size/weight/color |
 | `Icon` | Nerd Font glyph |
 | `Badge` | Colored pill label |
+| `KeyValue` | Compact label-value row |
+| `Stat` | KPI / metric card |
 | `Separator` | Horizontal divider |
 | `Spacer` | Flexible space filler |
 | `Table` / `Col` | Data table with headers |
@@ -149,6 +155,8 @@ Production-ready scripts that fetch live data and output openui-lang to stdout:
 | `progress.tsx` | `[-i "Label:val:max"]` | Disk usage or custom |
 | `table.tsx` | `[--json] [--stdin]` | Process list or custom |
 | `list.tsx` | `[-i "text:detail"] [--json]` | Nix profile or custom |
+| `user.tsx` | | Current logged-in user + session |
+| `system.tsx` | | Live system information summary |
 
 ```bash
 # Live stock ticker on display
