@@ -6,22 +6,21 @@ import satori from "satori";
 import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
 import { readFileSync, existsSync } from "fs";
+import { resolve, dirname } from "path";
 import { DISPLAY_WIDTH, DISPLAY_HEIGHT } from "./tokens";
 
 let fontData: ArrayBuffer | null = null;
 let fontBoldData: ArrayBuffer | null = null;
 let nerdFontData: ArrayBuffer | null = null;
 
+const FONTS_DIR = resolve(dirname(new URL(import.meta.url).pathname), "../fonts");
+
 const FONT_PATHS = [
-  "/run/current-system/sw/share/X11/fonts/DejaVuSans.ttf",
-  "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-  "/usr/share/fonts/TTF/DejaVuSans.ttf",
+  `${FONTS_DIR}/Inter-Regular.ttf`,
 ];
 
 const FONT_BOLD_PATHS = [
-  "/run/current-system/sw/share/X11/fonts/DejaVuSans-Bold.ttf",
-  "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-  "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+  `${FONTS_DIR}/Inter-Bold.ttf`,
 ];
 
 const NERD_FONT_PATHS = [
@@ -29,15 +28,14 @@ const NERD_FONT_PATHS = [
   "/usr/share/fonts/TTF/JetBrainsMonoNLNerdFont-Bold.ttf",
 ];
 
+function readFont(path: string): ArrayBuffer {
+  const buf = readFileSync(path);
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
+
 function findFont(paths: string[]): ArrayBuffer | null {
   for (const p of paths) {
-    if (existsSync(p)) {
-      const buf = readFileSync(p);
-      return buf.buffer.slice(
-        buf.byteOffset,
-        buf.byteOffset + buf.byteLength,
-      );
-    }
+    if (existsSync(p)) return readFont(p);
   }
   return null;
 }

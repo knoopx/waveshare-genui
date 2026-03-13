@@ -47,21 +47,38 @@
       pname = "waveshare-genui";
       version = "1.0.0";
       src = ./genui;
-      npmDepsHash = "sha256-C4MqeoFJvAjUZcfbd/CMyNam7j+g9w3f/4ThhwvaVoc=";
+      npmDepsHash = "sha256-SUzZn7YYVAwSX2AqUvOlZ6gMYHMHdnQ+XUtQps+OusU=";
       npmDepsFetcherVersion = 2;
       makeCacheWritable = true;
       npmFlags = ["--legacy-peer-deps"];
       dontNpmBuild = true;
+      buildPhase = ''
+        runHook preBuild
+        mkdir -p dist
+        ./node_modules/.bin/esbuild src/index.tsx \
+          --bundle \
+          --platform=node \
+          --format=esm \
+          --outfile=dist/index.mjs \
+          --external:serialport \
+          --external:sharp \
+          --external:@resvg/resvg-js
+        runHook postBuild
+      '';
       installPhase = ''
         runHook preInstall
         mkdir -p $out/lib/waveshare-genui
-        cp -r src node_modules package.json theme.json $out/lib/waveshare-genui/
+        cp -r dist src fonts node_modules package.json theme.json $out/lib/waveshare-genui/
         runHook postInstall
       '';
     };
 
     waveshare-genui = pkgs.writeShellScriptBin "waveshare-genui" ''
-      exec ${pkgs.nodejs}/bin/node ${genui}/lib/waveshare-genui/node_modules/tsx/dist/cli.mjs ${genui}/lib/waveshare-genui/src/index.tsx "$@"
+      exec ${pkgs.nodejs}/bin/node ${genui}/lib/waveshare-genui/dist/index.mjs "$@"
+    '';
+
+    waveshare-genui-screenshots = pkgs.writeShellScriptBin "waveshare-genui-screenshots" ''
+      exec ${pkgs.bun}/bin/bun ${self}/genui/scripts/screenshots.tsx "$@"
     '';
 
     # Common build inputs for firmware work
@@ -94,6 +111,10 @@
       default = {
         type = "app";
         program = "${waveshare-genui}/bin/waveshare-genui";
+      };
+      screenshots = {
+        type = "app";
+        program = "${waveshare-genui-screenshots}/bin/waveshare-genui-screenshots";
       };
       flash = {
         type = "app";
