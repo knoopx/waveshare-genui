@@ -45,9 +45,9 @@ from display import (CMD_OFF, CMD_ON, DISPLAY_H, DISPLAY_W, connect,
                      load_theme, send_command, send_frame)
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
-    render_departures, render_gauges, render_github, render_hackernews,
-    render_image, render_list, render_mail, render_message,
-    render_monitor, render_month_calendar, render_notify,
+    render_dashboard, render_departures, render_gauges, render_github,
+    render_hackernews, render_image, render_list, render_mail,
+    render_message, render_monitor, render_month_calendar, render_notify,
     render_nowplaying, render_progress, render_qrcode, render_stocks,
     render_sysmon, render_table, render_tasks, render_test_pattern,
     render_timer, render_weather,
@@ -140,6 +140,165 @@ def cmd_notify(args):
     data = render_notify(args.title, body, args.icon,
                          DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data)
+
+
+def cmd_dashboard(args):
+    import urllib.request
+
+    now = datetime.now()
+
+    # fetch weather
+    weather = None
+    try:
+        loc = args.location or ""
+        url = f"https://wttr.in/{loc}?format=j1"
+        req = urllib.request.Request(url, headers={"User-Agent": "waveshare-display"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            weather = json.loads(resp.read())
+    except Exception as e:
+        print(f"Weather fetch failed: {e}", file=sys.stderr)
+
+    def gog_json(gog_args):
+        try:
+            out = subprocess.check_output(
+                ["gog"] + gog_args + ["-j", "--results-only", "--no-input"],
+                stderr=subprocess.DEVNULL, timeout=15)
+            return json.loads(out)
+        except (subprocess.SubprocessError, json.JSONDecodeError):
+            return []
+
+    # fetch calendar events
+    events = []
+    try:
+        raw = gog_json(["calendar", "events", "--today",
+                         "--max", str(args.max_events)])
+        for e in raw:
+            start = e.get("start", {})
+            end = e.get("end", {})
+            all_day = False
+
+            # skip past events
+            cutoff = end if "dateTime" in end else start
+            if "dateTime" in cutoff:
+                try:
+                    if datetime.fromisoformat(cutoff["dateTime"]) < now:
+                        continue
+                except (ValueError, TypeError):
+                    pass
+
+            if "dateTime" in start:
+                try:
+                    start_str = datetime.fromisoformat(
+                        start["dateTime"]).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    start_str = ""
+            elif "date" in start:
+                all_day = True
+                start_str = "All day"
+            else:
+                start_str = ""
+            end_str = ""
+            if "dateTime" in end:
+                try:
+                    end_str = datetime.fromisoformat(
+                        end["dateTime"]).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    pass
+            time_str = (f"{start_str} – {end_str}"
+                        if end_str and not all_day else start_str)
+            events.append({
+                "summary": e.get("summary", "(No title)"),
+                "time": time_str,
+                "all_day": all_day,
+                "location": e.get("location", ""),
+            })
+            if len(events) >= args.max_events:
+                break
+    except Exception as e:
+        print(f"Calendar fetch failed: {e}", file=sys.stderr)
+
+    # fetch next departure (Vilassar → Barcelona/Hospitalet)
+    departures = []
+    if args.station_id:
+        try:
+            api_url = (f"https://serveisgrs.rodalies.gencat.cat/api/departures"
+                       f"?stationId={args.station_id}&minute=120"
+                       f"&fullResponse=true&lang=en")
+            req = urllib.request.Request(api_url,
+                                        headers={"User-Agent": "waveshare-display"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                raw = json.loads(resp.read())
+            dest_filter = [d.lower() for d in (args.dest_filter or [])]
+            for train in raw.get("trains", []):
+                dest = train.get("destinationStation", {})
+                dest_name = dest.get("name", "") if isinstance(dest, dict) else str(dest)
+                if dest_filter and not any(f in dest_name.lower() for f in dest_filter):
+                    continue
+                dep_time = train.get("departureDateHourSelectedStation", "")
+                try:
+                    dep_time = datetime.fromisoformat(dep_time).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    pass
+                line = train.get("line", {})
+                departures.append({
+                    "time": dep_time,
+                    "destination": dest_name,
+                    "line": line.get("name", "") if isinstance(line, dict) else str(line),
+                    "delay": train.get("delay", 0),
+                })
+                break  # only need the next one
+        except Exception as e:
+            print(f"Departures fetch failed: {e}", file=sys.stderr)
+
+    # fetch stocks
+    tickers = []
+    if args.symbols:
+        for symbol in args.symbols:
+            try:
+                url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+                       f"?range=1d&interval=5m")
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "waveshare-display"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    raw = json.loads(resp.read())
+                result_data = raw["chart"]["result"][0]
+                meta = result_data["meta"]
+                price = meta["regularMarketPrice"]
+                prev_close = meta.get("chartPreviousClose", price)
+                change_pct = ((price - prev_close) / prev_close * 100
+                              if prev_close else 0)
+                tickers.append({
+                    "symbol": symbol.upper(),
+                    "price": price,
+                    "change_pct": change_pct,
+                })
+            except Exception as e:
+                print(f"Error fetching {symbol}: {e}", file=sys.stderr)
+
+    # fetch now playing
+    nowplaying = None
+    try:
+        def playerctl(*pargs):
+            try:
+                return subprocess.check_output(
+                    ["playerctl", *pargs], stderr=subprocess.DEVNULL, timeout=2,
+                ).decode().strip()
+            except (subprocess.SubprocessError, FileNotFoundError):
+                return ""
+
+        status = playerctl("status")
+        if status == "Playing":
+            nowplaying = {
+                "title": playerctl("metadata", "title"),
+                "artist": playerctl("metadata", "artist"),
+            }
+    except Exception:
+        pass
+
+    data = render_dashboard(now, weather, events, nowplaying, departures,
+                            tickers, args.units, args.use_24h,
+                            DISPLAY_W, DISPLAY_H)
+    result(connect(args.port), data, "dashboard")
 
 
 def cmd_clock(args):
@@ -657,6 +816,18 @@ def main():
     p.add_argument("body", nargs="?", default="", help="Body text")
     p.add_argument("--icon", default="\uf0e0", help="Nerd Font icon")
 
+    # dashboard
+    p = sub.add_parser("dashboard", help="Clock + weather + events + tasks + now playing")
+    p.add_argument("--12h", dest="use_24h", action="store_false", default=True)
+    p.add_argument("--location", default="", help="Weather location (default: auto)")
+    p.add_argument("--units", choices=["c", "f"], default="c")
+    p.add_argument("--max-events", type=int, default=5, help="Max events (default: 5)")
+    p.add_argument("--station-id", default="", help="Rodalies station ID for departures")
+    p.add_argument("--dest-filter", action="append",
+                   help="Filter departures by destination (substring, repeat for multiple)")
+    p.add_argument("--symbol", dest="symbols", action="append",
+                   help="Stock/crypto ticker symbol (repeat for multiple)")
+
     # clock
     p = sub.add_parser("clock", help="Current time and date")
     p.add_argument("--24h", dest="use_24h", action="store_true")
@@ -779,7 +950,8 @@ def main():
     commands = {
         "on": cmd_on, "off": cmd_off,
         "image": cmd_image, "message": cmd_message, "notify": cmd_notify,
-        "clock": cmd_clock, "weather": cmd_weather, "sysmon": cmd_sysmon,
+        "dashboard": cmd_dashboard, "clock": cmd_clock,
+        "weather": cmd_weather, "sysmon": cmd_sysmon,
         "nowplaying": cmd_nowplaying, "mail": cmd_mail, "calendar": cmd_calendar,
         "tasks": cmd_tasks, "github": cmd_github, "timer": cmd_timer, "gauge": cmd_gauge,
         "qrcode": cmd_qrcode, "progress": cmd_progress, "table": cmd_table,

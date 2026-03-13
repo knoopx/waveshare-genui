@@ -16,22 +16,22 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 
 | | | |
 |:---:|:---:|:---:|
-| ![Clock](screenshots/clock.png) | ![Weather](screenshots/weather.png) | ![System Monitor](screenshots/sysmon.png) |
-| Clock | Weather | System Monitor |
-| ![Now Playing](screenshots/nowplaying.png) | ![Mail](screenshots/mail.png) | ![Calendar](screenshots/calendar.png) |
-| Now Playing | Mail | Calendar |
-| ![Tasks](screenshots/tasks.png) | ![GitHub](screenshots/github.png) | ![Stocks](screenshots/stocks.png) |
-| Tasks | GitHub | Stocks |
-| ![Hacker News](screenshots/hackernews.png) | ![Departures](screenshots/departures.png) | ![Monitor](screenshots/monitor.png) |
-| Hacker News | Departures | Monitor |
-| ![Timer](screenshots/timer.png) | ![Gauge](screenshots/gauge.png) | ![Progress Bar](screenshots/progress-bar.png) |
-| Timer | Gauge | Progress Bar |
-| ![Progress Ring](screenshots/progress-ring.png) | ![QR Code](screenshots/qrcode.png) | ![Month Calendar](screenshots/monthcal.png) |
-| Progress Ring | QR Code | Month Calendar |
-| ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) | ![Table](screenshots/table.png) |
-| Notification | Message | Table |
-| ![List](screenshots/list.png) | ![Image](screenshots/image.png) | |
-| List | Image | |
+| ![Dashboard](screenshots/dashboard.png) | ![Clock](screenshots/clock.png) | ![Weather](screenshots/weather.png) |
+| Dashboard | Clock | Weather |
+| ![System Monitor](screenshots/sysmon.png) | ![Now Playing](screenshots/nowplaying.png) | ![Mail](screenshots/mail.png) |
+| System Monitor | Now Playing | Mail |
+| ![Calendar](screenshots/calendar.png) | ![Tasks](screenshots/tasks.png) | ![GitHub](screenshots/github.png) |
+| Calendar | Tasks | GitHub |
+| ![Stocks](screenshots/stocks.png) | ![Hacker News](screenshots/hackernews.png) | ![Departures](screenshots/departures.png) |
+| Stocks | Hacker News | Departures |
+| ![Monitor](screenshots/monitor.png) | ![Timer](screenshots/timer.png) | ![Gauge](screenshots/gauge.png) |
+| Monitor | Timer | Gauge |
+| ![Progress Bar](screenshots/progress-bar.png) | ![Progress Ring](screenshots/progress-ring.png) | ![QR Code](screenshots/qrcode.png) |
+| Progress Bar | Progress Ring | QR Code |
+| ![Month Calendar](screenshots/monthcal.png) | ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) |
+| Month Calendar | Notification | Message |
+| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | ![Image](screenshots/image.png) |
+| Table | List | Image |
 
 ## Host CLI
 
@@ -45,6 +45,7 @@ Default port: `/dev/ttyACM0`. Override with `--port` / `-p`.
 
 | Subcommand | Example | Description |
 |------------|---------|-------------|
+| **dashboard** | `waveshare-display dashboard --symbol AAPL --station-id 79600` | Clock + weather + events + stocks + train + now playing |
 | **image** | `waveshare-display image photo.jpg` | Send image or directory |
 | **message** | `waveshare-display message "Hello" --size 64` | Fullscreen text |
 | **notify** | `waveshare-display notify "Title" "Body" --icon $'\uf058' --accent green` | Notification with Nerd Font icon |

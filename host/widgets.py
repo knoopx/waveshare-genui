@@ -285,6 +285,226 @@ def render_clock(now: datetime, width: int, height: int,
     return img_to_webp(img)
 
 
+# --- dashboard ---
+
+def render_dashboard(now: datetime, weather: dict | None, events: list[dict],
+                     nowplaying: dict | None,
+                     departures: list[dict] | None,
+                     tickers: list[dict] | None,
+                     units: str, use_24h: bool,
+                     width: int, height: int) -> bytes:
+    """Combined dashboard: clock, weather, now playing, train, stocks, events."""
+    img, draw = _new_canvas(width, height)
+
+    _draw_accent_bar(draw, width)
+
+    # -- fonts --
+    time_font = find_font(100, bold=True)
+    date_font = find_font(26)
+    item_font = find_font(26, bold=True)
+    sub_font = find_font(22)
+    icon_sm = find_nerd_font(20)
+    muted = lerp_color(FG, BG, MUTED)
+    dim = lerp_color(FG, BG, DIM)
+    max_w = width - PAD * 2
+
+    # -- clock --
+    time_str = (now.strftime("%H:%M") if use_24h
+                else now.strftime("%I:%M").lstrip("0"))
+
+    clock_y = ACCENT_BAR_H + PAD
+    draw.text((PAD, clock_y), time_str, fill=FG, font=time_font)
+    tbbox = draw.textbbox((PAD, clock_y), time_str, font=time_font)
+
+    if not use_24h:
+        ampm_font = find_font(28)
+        draw.text((tbbox[2] + INNER_GAP, clock_y + INNER_GAP),
+                  now.strftime("%p"), fill=dim, font=ampm_font)
+
+    date_str = now.strftime("%A, %B %-d")
+    date_y = tbbox[3] + INNER_GAP
+    draw.text((PAD, date_y), date_str, fill=muted, font=date_font)
+    date_bbox = draw.textbbox((PAD, date_y), date_str, font=date_font)
+
+    # -- weather (right-aligned, vertically centered with clock) --
+    if weather:
+        current = weather["current_condition"][0]
+        temp_key = "temp_F" if units == "f" else "temp_C"
+        feels_key = "FeelsLikeF" if units == "f" else "FeelsLikeC"
+        unit_sym = "°F" if units == "f" else "°C"
+        temp = current[temp_key]
+        feels = current[feels_key]
+        desc = current["weatherDesc"][0]["value"]
+        code = current["weatherCode"]
+        humidity = current.get("humidity", "")
+
+        w_icon_font = find_nerd_font(48)
+        w_temp_font = find_font(44, bold=True)
+        w_detail_font = find_font(20)
+
+        icon_char = WEATHER_ICONS.get(code, "\ue302")
+        temp_str = f"{temp}{unit_sym}"
+
+        tb = draw.textbbox((0, 0), temp_str, font=w_temp_font)
+        tw_t, th_t = tb[2] - tb[0], tb[3] - tb[1]
+
+        iw, ih = 0, 0
+        if w_icon_font:
+            ib = draw.textbbox((0, 0), icon_char, font=w_icon_font)
+            iw, ih = ib[2] - ib[0], ib[3] - ib[1]
+
+        detail_parts = [desc]
+        if feels:
+            detail_parts.append(f"Feels {feels}{unit_sym}")
+        if humidity:
+            detail_parts.append(f"{humidity}%")
+        detail_str = " · ".join(detail_parts)
+        dw, dh = text_size(draw, detail_str, w_detail_font)
+
+        block_h = th_t + INNER_GAP + dh
+        clock_mid = (clock_y + tbbox[3]) // 2
+        by = clock_mid - block_h // 2
+
+        row_w = (iw + INNER_GAP + tw_t) if iw else tw_t
+        rx = width - PAD - row_w
+
+        if w_icon_font:
+            draw.text((rx - ib[0], by + (th_t - ih) // 2 - ib[1]),
+                      icon_char, fill=ACCENT, font=w_icon_font)
+        draw.text((rx + iw + INNER_GAP - tb[0], by - tb[1]),
+                  temp_str, fill=FG, font=w_temp_font)
+
+        draw.text((width - PAD - dw, by + th_t + INNER_GAP),
+                  detail_str, fill=muted, font=w_detail_font)
+
+    # -- content starts after header --
+    cursor = date_bbox[3] + POST_HEADER
+    _draw_sep(draw, cursor, width)
+    cursor += POST_SEP
+
+    # -- inline rows (now playing + next train) --
+    has_inline = False
+
+    if nowplaying and nowplaying.get("title"):
+        title = nowplaying["title"]
+        artist = nowplaying.get("artist", "")
+        np_text = f"{artist} — {title}" if artist else title
+        while text_size(draw, np_text, sub_font)[0] > max_w - 36 and len(np_text) > 4:
+            np_text = np_text[:-4] + "…"
+
+        green = parse_color("base0b")
+        if icon_sm:
+            draw.text((PAD, cursor + 3), "\uf001", fill=green, font=icon_sm)
+        draw.text((PAD + 32, cursor), np_text, fill=FG, font=sub_font)
+        cursor += ROW_SINGLE
+        has_inline = True
+
+    if departures:
+        dep = departures[0]
+        dep_time = dep.get("time", "")
+        dep_dest = dep.get("destination", "")
+        dep_line = dep.get("line", "")
+        delay = dep.get("delay", 0)
+        train_text = f"{dep_time}  {dep_line} → {dep_dest}"
+        if delay:
+            train_text += f"  +{delay}'"
+        while text_size(draw, train_text, sub_font)[0] > max_w - 36 and len(train_text) > 4:
+            train_text = train_text[:-4] + "…"
+
+        cyan = parse_color("base0c")
+        if icon_sm:
+            draw.text((PAD, cursor + 3), "\uf238", fill=cyan, font=icon_sm)
+        draw.text((PAD + 32, cursor), train_text, fill=FG, font=sub_font)
+        cursor += ROW_SINGLE
+        has_inline = True
+
+    if tickers:
+        green = parse_color("base0b")
+        red = parse_color("base08")
+        parts = []
+        for t in tickers:
+            pct = t.get("change_pct", 0)
+            arrow = "▲" if pct >= 0 else "▼"
+            parts.append(f"{t['symbol']} {arrow}{abs(pct):.1f}%")
+        stock_text = "  ".join(parts)
+        while text_size(draw, stock_text, sub_font)[0] > max_w - 36 and len(stock_text) > 4:
+            stock_text = stock_text[:-4] + "…"
+
+        if icon_sm:
+            draw.text((PAD, cursor + 3), "\uf201",
+                      fill=parse_color("base0e"), font=icon_sm)
+
+        # draw each ticker with its own color
+        sx = PAD + 32
+        ticker_font = sub_font
+        for i, t in enumerate(tickers):
+            pct = t.get("change_pct", 0)
+            arrow = "▲" if pct >= 0 else "▼"
+            color = green if pct >= 0 else red
+
+            draw.text((sx, cursor), arrow, fill=color, font=ticker_font)
+            aw, _ = text_size(draw, arrow, ticker_font)
+            sx += aw + 2
+            draw.text((sx, cursor), t["symbol"], fill=color, font=ticker_font)
+            sw, _ = text_size(draw, t["symbol"], ticker_font)
+            sx += sw + 4
+            pct_str = f"{abs(pct):.1f}%"
+            draw.text((sx, cursor), pct_str, fill=color, font=ticker_font)
+            pw, _ = text_size(draw, pct_str, ticker_font)
+            sx += pw + 16
+            if sx > width - PAD:
+                break
+
+        cursor += ROW_SINGLE
+        has_inline = True
+
+    if has_inline:
+        _draw_sep(draw, cursor, width)
+        cursor += POST_SEP
+
+    # -- events --
+    if events:
+        for i, event in enumerate(events):
+            y = cursor + i * ROW_DOUBLE
+            if y + ROW_DOUBLE > height:
+                break
+            color = _palette()[i % len(_palette())]
+
+            draw.rounded_rectangle([PAD, y + 6, PAD + 5, y + ROW_DOUBLE - 6],
+                                   radius=3, fill=color)
+
+            pad_y = (ROW_DOUBLE - 30 - 24) // 2  # center title+detail block
+            text_y = y + pad_y
+
+            summary = event["summary"]
+            while (text_size(draw, summary, item_font)[0] > max_w - 24
+                   and len(summary) > 4):
+                summary = summary[:-4] + "…"
+            draw.text((PAD + 18, text_y), summary, fill=FG, font=item_font)
+
+            det_y = text_y + 30
+            if icon_sm:
+                draw.text((PAD + 18, det_y), "\uf017",
+                          fill=muted, font=icon_sm)
+            draw.text((PAD + 42, det_y), event["time"],
+                      fill=muted, font=sub_font)
+
+            if event.get("location"):
+                loc = event["location"]
+                tw_time, _ = text_size(draw, event["time"], sub_font)
+                loc_x = PAD + 42 + tw_time + PAD
+                max_loc = width - PAD - loc_x
+                while text_size(draw, loc, sub_font)[0] > max_loc and len(loc) > 4:
+                    loc = loc[:-4] + "…"
+                if icon_sm:
+                    draw.text((loc_x, det_y), "\uf124",
+                              fill=muted, font=icon_sm)
+                draw.text((loc_x + 24, det_y), loc,
+                          fill=muted, font=sub_font)
+
+    return img_to_webp(img)
+
+
 # --- weather ---
 
 WEATHER_ICONS = {
@@ -1563,6 +1783,7 @@ def render_stocks(tickers: list[dict], width: int, height: int) -> bytes:
     card_pad = PAD // 2
     card_gap = CARD_GAP
     available = height - content_y - PAD
+    tickers = tickers[:5]
     n = len(tickers)
 
     # size cards to fit all tickers — top row has symbol + change + price, rest is sparkline
