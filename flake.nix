@@ -43,17 +43,20 @@
     ];
 
     # Host CLI — OpenUI generative UI rendered via satori
-    genui = pkgs.stdenvNoCC.mkDerivation {
-      name = "waveshare-genui";
+    genui = pkgs.buildNpmPackage {
+      pname = "waveshare-genui";
+      version = "1.0.0";
       src = ./genui;
-      nativeBuildInputs = [pkgs.bun];
-      buildPhase = ''
-        export HOME=$TMPDIR
-        bun install --frozen-lockfile
-      '';
+      npmDepsHash = "sha256-C4MqeoFJvAjUZcfbd/CMyNam7j+g9w3f/4ThhwvaVoc=";
+      npmDepsFetcherVersion = 2;
+      makeCacheWritable = true;
+      npmFlags = ["--legacy-peer-deps"];
+      dontNpmBuild = true;
       installPhase = ''
+        runHook preInstall
         mkdir -p $out/lib/waveshare-genui
         cp -r src node_modules package.json theme.json $out/lib/waveshare-genui/
+        runHook postInstall
       '';
     };
 
