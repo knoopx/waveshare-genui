@@ -9,11 +9,15 @@ import serial
 from PIL import Image, ImageDraw, ImageFont
 
 MAGIC = b"DWBP"
+CMD_MAGIC = b"DCMD"
 DISPLAY_W = 720
 DISPLAY_H = 720
 BAUD = 921_600
 CHUNK_SIZE = 4096
 RESP_OK = 0x01
+
+CMD_OFF = 0x00
+CMD_ON = 0x01
 
 
 _theme = {}
@@ -138,6 +142,13 @@ def connect(port: str) -> serial.Serial:
     time.sleep(0.1)
     ser.reset_input_buffer()
     return ser
+
+
+def send_command(ser: serial.Serial, cmd: int) -> bool:
+    ser.write(CMD_MAGIC + bytes([cmd]))
+    ser.flush()
+    resp = ser.read(1)
+    return bool(resp) and resp[0] == RESP_OK
 
 
 def send_frame(ser: serial.Serial, png_data: bytes) -> bool:

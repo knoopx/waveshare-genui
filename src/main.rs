@@ -5,9 +5,13 @@ use anyhow::{bail, Result};
 use image_webp::WebPDecoder;
 
 const MAGIC: &[u8; 4] = b"DWBP";
+const CMD_MAGIC: &[u8; 4] = b"DCMD";
 const HEADER_SIZE: usize = 12;
 const RESP_OK: u8 = 0x01;
 const RESP_ERR: u8 = 0xFF;
+
+const CMD_OFF: u8 = 0x00;
+const CMD_ON: u8 = 0x01;
 
 const LCD_W: usize = 720;
 const LCD_H: usize = 720;
@@ -52,37 +56,53 @@ fn main() -> Result<()> {
     // RGB565 framebuffer scratch
     let mut fb_scratch: Vec<u8> = vec![0u8; FB_SIZE];
 
-    const SLEEP_TIMEOUT_MS: u32 = 10_000;
-    let mut asleep = false;
-
     loop {
-        // Try to read first magic byte with sleep timeout
+        // Read first byte — could be start of DWBP or DCMD
         let mut hdr = [0u8; HEADER_SIZE];
         let n = unsafe {
-            esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, SLEEP_TIMEOUT_MS)
+            esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, 0xFFFF_FFFF)
         };
         if n <= 0 {
-            // Timeout — sleep the display
-            if !asleep {
-                unsafe { esp_idf_sys::bsp_display_set_brightness(0) };
-                asleep = true;
-            }
-            continue;
-        }
-        if hdr[0] != MAGIC[0] {
-            continue;
-        }
-        if read_exact(&mut hdr[1..4]).is_err() || &hdr[0..4] != MAGIC {
-            continue;
-        }
-        if read_exact(&mut hdr[4..HEADER_SIZE]).is_err() {
             continue;
         }
 
-        // Wake display on valid frame
-        if asleep {
-            unsafe { esp_idf_sys::bsp_display_set_brightness(100) };
-            asleep = false;
+        // Check if this starts a command (DCMD)
+        if hdr[0] == CMD_MAGIC[0] {
+            if read_exact(&mut hdr[1..4]).is_err() {
+                continue;
+            }
+            if &hdr[0..4] == CMD_MAGIC {
+                let mut cmd = [0u8; 1];
+                if read_exact(&mut cmd).is_err() {
+                    send_byte(RESP_ERR);
+                    continue;
+                }
+                match cmd[0] {
+                    CMD_ON => unsafe { esp_idf_sys::bsp_display_set_brightness(100) },
+                    CMD_OFF => unsafe { esp_idf_sys::bsp_display_set_brightness(0) },
+                    _ => {
+                        send_byte(RESP_ERR);
+                        continue;
+                    }
+                };
+                send_byte(RESP_OK);
+                continue;
+            }
+            // Not DCMD — check if it could be DWBP start
+            if &hdr[0..4] != MAGIC {
+                continue;
+            }
+        } else if hdr[0] == MAGIC[0] {
+            if read_exact(&mut hdr[1..4]).is_err() || &hdr[0..4] != MAGIC {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        // Read rest of frame header
+        if read_exact(&mut hdr[4..HEADER_SIZE]).is_err() {
+            continue;
         }
 
         let data_len = u32::from_le_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;

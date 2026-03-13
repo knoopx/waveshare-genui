@@ -3,6 +3,8 @@
 Waveshare Display — unified CLI.
 
 Usage:
+    waveshare-display on
+    waveshare-display off
     waveshare-display image photo.jpg
     waveshare-display message "Hello World" --size 80
     waveshare-display clock --24h
@@ -39,7 +41,8 @@ from pathlib import Path
 
 from PIL import Image
 
-from display import (DISPLAY_H, DISPLAY_W, connect, load_theme, send_frame)
+from display import (CMD_OFF, CMD_ON, DISPLAY_H, DISPLAY_W, connect,
+                     load_theme, send_command, send_frame)
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
     render_departures, render_gauges, render_github, render_hackernews,
@@ -59,6 +62,20 @@ def result(ser, data, info=""):
 
 
 # --- subcommands ---
+
+def cmd_on(args):
+    ser = connect(args.port)
+    ok = send_command(ser, CMD_ON)
+    print(f"Display on: {'OK' if ok else 'FAIL'}")
+    ser.close()
+
+
+def cmd_off(args):
+    ser = connect(args.port)
+    ok = send_command(ser, CMD_OFF)
+    print(f"Display off: {'OK' if ok else 'FAIL'}")
+    ser.close()
+
 
 def cmd_image(args):
     ser = connect(args.port)
@@ -612,6 +629,10 @@ def main():
                         help="Base16 JSON theme file")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # on / off
+    sub.add_parser("on", help="Turn display on")
+    sub.add_parser("off", help="Turn display off")
+
     # image
     p = sub.add_parser("image", help="Send image or directory")
     p.add_argument("source", nargs="?", help="Image file or directory")
@@ -756,6 +777,7 @@ def main():
         load_theme(args.theme)
 
     commands = {
+        "on": cmd_on, "off": cmd_off,
         "image": cmd_image, "message": cmd_message, "notify": cmd_notify,
         "clock": cmd_clock, "weather": cmd_weather, "sysmon": cmd_sysmon,
         "nowplaying": cmd_nowplaying, "mail": cmd_mail, "calendar": cmd_calendar,
