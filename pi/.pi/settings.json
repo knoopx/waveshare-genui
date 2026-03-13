@@ -1,7 +1,7 @@
 {
   "defaultProvider": "local",
   "defaultModel": "unsloth/Qwen3.5-4B-GGUF",
-  "packages": ["@marcfargas/pi-heartbeat"],
+  "packages": ["npm:@marcfargas/pi-heartbeat"],
   "compaction": {
     "enabled": true,
     "reserveTokens": 4096,
