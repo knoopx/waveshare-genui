@@ -1562,15 +1562,17 @@ def render_stocks(tickers: list[dict], width: int, height: int) -> bytes:
 
     card_pad = PAD // 2
     card_gap = CARD_GAP
-    spark_h = 40
-    card_h = card_pad + 32 + INNER_GAP + spark_h + INNER_GAP + 28 + card_pad
     available = height - content_y - PAD
-    max_cards = available // (card_h + card_gap)
+    n = len(tickers)
+
+    # size cards to fit all tickers — top row has symbol + change + price, rest is sparkline
+    card_h = (available - card_gap * (n - 1)) // n if n > 0 else 0
+    spark_h = max(0, card_h - card_pad * 2 - 32 - INNER_GAP)
 
     green = parse_color("base0b")
     red = parse_color("base08")
 
-    for i, t in enumerate(tickers[:max_cards]):
+    for i, t in enumerate(tickers):
         y = content_y + i * (card_h + card_gap)
         draw.rounded_rectangle([PAD, y, width - PAD, y + card_h],
                                radius=16, fill=lerp_color(BG, FG, CARD_BG))
@@ -1579,18 +1581,29 @@ def render_stocks(tickers: list[dict], width: int, height: int) -> bytes:
         is_up = change_pct >= 0
         trend_color = green if is_up else red
 
-        # symbol
-        draw.text((PAD + card_pad, y + card_pad), t["symbol"],
+        # top row: symbol, change %, price
+        row_y = y + card_pad
+        draw.text((PAD + card_pad, row_y), t["symbol"],
                   fill=lerp_color(FG, BG, MUTED), font=symbol_font)
 
-        # price (right-aligned on top row)
+        sym_w, _ = text_size(draw, t["symbol"], symbol_font)
+        arrow = "\uf062" if is_up else "\uf063"
+        change_str = f"{'+' if is_up else ''}{change_pct:.2f}%"
+        change_x = PAD + card_pad + sym_w + 12
+        if detail_icon_font:
+            draw.text((change_x, row_y + 2), arrow,
+                      fill=trend_color, font=detail_icon_font)
+            change_x += 22
+        draw.text((change_x, row_y + 2), change_str,
+                  fill=trend_color, font=change_font)
+
         price_str = f"${t['price']:,.2f}" if t["price"] >= 1 else f"${t['price']:.4f}"
         pw, _ = text_size(draw, price_str, price_font)
-        draw.text((width - PAD - card_pad - pw, y + card_pad),
+        draw.text((width - PAD - card_pad - pw, row_y),
                   price_str, fill=FG, font=price_font)
 
         # sparkline
-        spark_y = y + card_pad + 32 + INNER_GAP
+        spark_y = row_y + 32 + INNER_GAP
         spark_w = width - PAD * 2 - card_pad * 2
         sparkline = t.get("sparkline", [])
         if sparkline:
@@ -1600,25 +1613,6 @@ def render_stocks(tickers: list[dict], width: int, height: int) -> bytes:
             mid_y = spark_y + spark_h // 2
             draw.line([PAD + card_pad, mid_y, PAD + card_pad + spark_w, mid_y],
                       fill=lerp_color(BG, FG, TRACK), width=2)
-
-        # change percentage
-        change_y = spark_y + spark_h + INNER_GAP
-        arrow = "\uf062" if is_up else "\uf063"  # up/down arrows
-        change_str = f"{'+' if is_up else ''}{change_pct:.2f}%"
-
-        if detail_icon_font:
-            draw.text((PAD + card_pad, change_y), arrow,
-                      fill=trend_color, font=detail_icon_font)
-        draw.text((PAD + card_pad + 28, change_y), change_str,
-                  fill=trend_color, font=change_font)
-
-    shown = min(len(tickers), max_cards)
-    if len(tickers) > shown:
-        count_font = find_font(20)
-        count_str = f"{shown}/{len(tickers)} tickers"
-        cw, _ = text_size(draw, count_str, count_font)
-        draw.text((width - PAD - cw, height - PAD + 4), count_str,
-                  fill=lerp_color(FG, BG, DIM), font=count_font)
 
     _draw_timestamp(draw, width, height)
 
