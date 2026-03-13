@@ -1,4 +1,0 @@
-pillow
-pyserial
-psutil
-qrcode

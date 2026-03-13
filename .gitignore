@@ -3,3 +3,4 @@ rust_out
 result
 __pycache__/
 *.pyc
+genui/node_modules/

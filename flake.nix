@@ -42,30 +42,23 @@
       pkgs.stdenv.cc.cc.lib
     ];
 
-    # Python environment for the host CLI
-    hostPython = pkgs.python3.withPackages (ps: [
-      ps.pyserial
-      ps.pillow
-      ps.numpy
-      ps.psutil
-      ps.qrcode
-    ]);
-
-    # Host scripts as a library
-    hostScripts = pkgs.stdenvNoCC.mkDerivation {
-      name = "waveshare-display-lib";
-      src = ./host;
+    # Host CLI — OpenUI generative UI rendered via satori
+    genui = pkgs.stdenvNoCC.mkDerivation {
+      name = "waveshare-genui";
+      src = ./genui;
+      nativeBuildInputs = [pkgs.bun];
+      buildPhase = ''
+        export HOME=$TMPDIR
+        bun install --frozen-lockfile
+      '';
       installPhase = ''
-        mkdir -p $out/lib
-        cp *.py *.json $out/lib/
+        mkdir -p $out/lib/waveshare-genui
+        cp -r src node_modules package.json theme.json $out/lib/waveshare-genui/
       '';
     };
 
-    # Single unified CLI
-    waveshare-display = pkgs.writeShellScriptBin "waveshare-display" ''
-      export PYTHONPATH="${hostScripts}/lib:''${PYTHONPATH:-}"
-      export PATH="${pkgs.playerctl}/bin:$PATH"
-      exec ${hostPython}/bin/python3 ${hostScripts}/lib/waveshare_display.py "$@"
+    waveshare-genui = pkgs.writeShellScriptBin "waveshare-genui" ''
+      exec ${pkgs.nodejs}/bin/node ${genui}/lib/waveshare-genui/node_modules/tsx/dist/cli.mjs ${genui}/lib/waveshare-genui/src/index.tsx "$@"
     '';
 
     # Common build inputs for firmware work
@@ -90,19 +83,19 @@
     ];
   in {
     packages.${system} = {
-      default = waveshare-display;
-      waveshare-display = waveshare-display;
+      default = waveshare-genui;
+      waveshare-genui = waveshare-genui;
     };
 
     apps.${system} = {
       default = {
         type = "app";
-        program = "${waveshare-display}/bin/waveshare-display";
+        program = "${waveshare-genui}/bin/waveshare-genui";
       };
       flash = {
         type = "app";
         program = let
-          flashScript = pkgs.writeShellScript "waveshare-display-flash" ''
+          flashScript = pkgs.writeShellScript "waveshare-genui-flash" ''
             set -euo pipefail
             PORT=''${1:-/dev/ttyACM0}
             BAUD=''${2:-921600}
@@ -139,7 +132,8 @@
       buildInputs =
         firmwareBuildInputs
         ++ [
-          waveshare-display
+          waveshare-genui
+          pkgs.bun
         ];
 
       shellHook = ''

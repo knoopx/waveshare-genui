@@ -1,6 +1,6 @@
-# Waveshare Display
+# waveshare-genui
 
-Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it into a serial-connected display. A host computer sends WebP images over UART and the firmware decodes and renders them on the 720×720 IPS LCD.
+Rust firmware + generative UI toolkit for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B**. Write display UIs as JSX or [openui-lang](https://github.com/thesysdev/openui), render to images, and send over serial to the 720×720 IPS LCD.
 
 ## Hardware
 
@@ -10,145 +10,197 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 | Display | 4" 720×720 IPS, MIPI DSI (ST7703) |
 | PSRAM | 32 MB @ 200 MHz |
 | Connection | Single USB cable (CH343 USB-to-UART bridge) |
-| Touch | GT911 capacitive (not used by this firmware) |
 
 ## Screenshots
 
 | | | |
 |:---:|:---:|:---:|
-| ![Dashboard](screenshots/dashboard.png) | ![Clock](screenshots/clock.png) | ![Weather](screenshots/weather.png) |
-| Dashboard | Clock | Weather |
-| ![System Monitor](screenshots/sysmon.png) | ![Now Playing](screenshots/nowplaying.png) | ![Mail](screenshots/mail.png) |
-| System Monitor | Now Playing | Mail |
-| ![Calendar](screenshots/calendar.png) | ![Tasks](screenshots/tasks.png) | ![GitHub](screenshots/github.png) |
-| Calendar | Tasks | GitHub |
+| ![Clock](screenshots/clock.png) | ![Calendar](screenshots/calendar.png) | ![Tasks](screenshots/tasks.png) |
+| Clock | Calendar | Tasks |
 | ![Stocks](screenshots/stocks.png) | ![Hacker News](screenshots/hackernews.png) | ![Departures](screenshots/departures.png) |
 | Stocks | Hacker News | Departures |
-| ![Monitor](screenshots/monitor.png) | ![Timer](screenshots/timer.png) | ![Gauge](screenshots/gauge.png) |
-| Monitor | Timer | Gauge |
-| ![Progress Bar](screenshots/progress-bar.png) | ![Progress Ring](screenshots/progress-ring.png) | ![QR Code](screenshots/qrcode.png) |
-| Progress Bar | Progress Ring | QR Code |
-| ![Month Calendar](screenshots/monthcal.png) | ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) |
-| Month Calendar | Notification | Message |
-| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | ![Image](screenshots/image.png) |
-| Table | List | Image |
+| ![Monitor](screenshots/monitor.png) | ![Gauge](screenshots/gauge.png) | ![Progress](screenshots/progress.png) |
+| Monitor | Gauge | Progress |
+| ![GitHub](screenshots/github.png) | ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) |
+| GitHub | Notification | Message |
+| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | |
+| Table | List | |
 
-## Host CLI
-
-A single `waveshare-display` command with subcommands. All are one-shot — send a single frame and exit. Orchestrate externally with `watch`, cron, or a wrapper script.
+## How It Works
 
 ```
-waveshare-display [--port PORT] <subcommand> [options]
+JSX / openui-lang      satori           resvg + sharp       UART
+┌─────────────────┐  ┌───────────┐    ┌─────────────┐    ┌─────────┐
+│ emit() or       │─→│ JSX → SVG │───→│ PNG → WebP  │───→│ chunked │
+│ parser.parse()  │  │ (yoga)    │    │ (rotate)    │    │ serial  │
+└─────────────────┘  └───────────┘    └─────────────┘    └─────────┘
 ```
 
-Default port: `/dev/ttyACM0`. Override with `--port` / `-p`.
+1. **Write UI** as JSX (using the component library) or openui-lang text
+2. **Emit** JSX to openui-lang via `emit()`, or feed text directly to the parser
+3. **satori** renders the component tree to SVG using yoga layout
+4. **resvg + sharp** convert to WebP, rotated 180° for the display orientation
+5. The frame is sent over **serial** using the DWBP chunked protocol
 
-| Subcommand | Example | Description |
-|------------|---------|-------------|
-| **dashboard** | `waveshare-display dashboard --symbol AAPL --station-id 79600` | Clock + weather + events + stocks + train + now playing |
-| **image** | `waveshare-display image photo.jpg` | Send image or directory |
-| **message** | `waveshare-display message "Hello" --size 64` | Fullscreen text |
-| **notify** | `waveshare-display notify "Title" "Body" --icon $'\uf058' --accent green` | Notification with Nerd Font icon |
-| **clock** | `waveshare-display clock --24h` | Current time and date |
-| **weather** | `waveshare-display weather --location Barcelona` | Weather via wttr.in |
-| **sysmon** | `waveshare-display sysmon` | CPU, RAM, disk gauges + details |
-| **nowplaying** | `waveshare-display nowplaying` | MPRIS media info via playerctl |
-| **mail** | `waveshare-display mail` | Unread emails via gog CLI |
-| **calendar** | `waveshare-display calendar` | Today's events via gog CLI |
-| **github** | `waveshare-display github owner/repo [...]` | Repo stars, forks, issues (up to 4) |
-| **timer** | `waveshare-display timer --remaining 90 --total 120 --label Deploy` | Countdown ring |
-| **gauge** | `waveshare-display gauge -g "CPU:73:%" -g "RAM:4/8:GB"` | 1–4 arc gauges |
-| **qrcode** | `waveshare-display qrcode "https://..." --label Title` | QR code display |
-| **progress** | `waveshare-display progress -i "Build:75:100" -i "Test:90%" --style bar` | Progress bars or circles |
-| **table** | `waveshare-display table --json '[{"Name":"Alice","Score":"95"}]'` | Tabular data display |
-| **list** | `waveshare-display list -i "Buy milk:From store" --title "To Do"` | List with icons and secondary text |
-| **departures** | `waveshare-display departures --station "My Station" --station-id 12345` | Train departure board (Rodalies API) |
-| **stocks** | `waveshare-display stocks AAPL MSFT BTC-USD` | Stock/crypto ticker via Yahoo Finance |
-| **hackernews** | `waveshare-display hackernews --count 8` | Hacker News top stories |
-| **monitor** | `waveshare-display monitor -s "App=https://example.com"` | Site uptime monitor |
-| **monthcal** | `waveshare-display monthcal --highlight 15 --highlight 20` | Month calendar grid |
+For LLM-driven UIs, the CLI generates a **system prompt** from the component library that instructs the model to output valid openui-lang.
 
-All subcommands support `--fg`, `--bg`, `--accent` color customization (name or `#RRGGBB`).
+## Component Library
 
-## Protocol
+| Component | Description |
+|-----------|-------------|
+| `Canvas` | 720×720 root container (required) |
+| `Header` | Accent bar + icon + title |
+| `Content` | Padded content area below header |
+| `Stack` | Flex container (row/column, gap, wrap) |
+| `Card` | Elevated card with subtle background |
+| `Text` | Text block with size/weight/color |
+| `Icon` | Nerd Font glyph |
+| `Badge` | Colored pill label |
+| `Separator` | Horizontal divider |
+| `Spacer` | Flexible space filler |
+| `Table` / `Col` | Data table with headers |
+| `List` / `ListItem` | Vertical list with icons |
+| `Gauge` | Circular arc gauge |
+| `ProgressBar` | Horizontal progress bar |
+| `Sparkline` | Mini line chart |
+| `StatusDot` | Green/red status indicator |
+| `Timestamp` | Auto-updating time display |
 
-WebP-compressed frames are sent over UART at 921600 baud using a chunked protocol with flow control:
+## Usage
 
-```
-Header (12 bytes):
-  Offset  Size  Field
-  0       4     Magic: "DWBP" (ASCII)
-  4       4     WebP data length (u32 LE)
-  8       2     Chunk size (u16 LE, typically 4096)
-  10      2     Reserved (set to 0)
-
-Flow:
-  Host → Device: header
-  Device → Host: 0x01 (ACK)
-  For each chunk:
-    Host → Device: chunk bytes
-    Device → Host: 0x01 (ACK)
-  Device decodes WebP, blits to framebuffer
-  Device → Host: 0x01 (done)
-```
-
-## Build
-
-### Prerequisites
-
-- [Nix](https://nixos.org/) with flakes enabled
-- ESP-IDF v5.4 toolchain (auto-downloaded by `esp-idf-sys` on first build)
-
-### Compile and flash
+### CLI
 
 ```bash
-nix develop path:. --command make flash
+# Pipe openui-lang to the display
+bun run examples/clock.tsx | waveshare-display -
+
+# Render to PNG instead
+bun run examples/stocks.tsx AAPL MSFT | waveshare-display - -o stocks.png
+
+# Read a .oui file
+waveshare-display dashboard.oui
+
+# Print the LLM system prompt
+waveshare-display prompt
+
+# Print the JSON schema
+waveshare-display schema
+
+# Display power
+waveshare-display on
+waveshare-display off
 ```
 
-### Run
+### JSX Emitter
+
+Write UIs as typed JSX and emit openui-lang:
+
+```tsx
+import React from "react";
+import { emit } from "./src/emit";
+import { Canvas, Header, Content, List, ListItem, Timestamp } from "./src/library";
+
+emit(
+  <Canvas>
+    <Header icon={"\uf201"} title="Market" />
+    <Content>
+      <List>
+        <ListItem text="AAPL" secondary="$178.52" icon={"\uf201"} />
+        <ListItem text="MSFT" secondary="$415.80" icon={"\uf201"} />
+      </List>
+    </Content>
+    <Timestamp />
+  </Canvas>,
+);
+```
+
+### openui-lang Syntax
+
+```
+root = Canvas([header, content, ts])
+header = Header("\uf201", "Market")
+content = Content([card1, card2], 14)
+card1 = Card([row1, spark1])
+row1 = Stack([sym, price], "row", "s", "center", "between")
+sym = Text("AAPL", "md", "bold", "muted")
+price = Text("$178.52", "lg", "bold")
+spark1 = Sparkline([170, 172, 175, 173, 178], "green")
+card2 = Card([Text("MSFT — $415.80", "lg", "bold")])
+ts = Timestamp()
+```
+
+## Examples
+
+Production-ready scripts that fetch live data and output openui-lang to stdout:
+
+| Example | Usage | Data Source |
+|---------|-------|-------------|
+| `clock.tsx` | `[--12h]` | System clock |
+| `message.tsx` | `<text>` or `--stdin` | CLI argument |
+| `notify.tsx` | `<title> [body] [--icon]` | CLI arguments |
+| `calendar.tsx` | `[--max N] [--today]` | Google Calendar via gog |
+| `tasks.tsx` | `[--list-id ID] [--max N]` | Google Tasks via gog |
+| `departures.tsx` | `--station-id ID [--station NAME]` | Rodalies API |
+| `stocks.tsx` | `AAPL MSFT BTC-USD` | Yahoo Finance |
+| `github.tsx` | `owner/repo [...]` | GitHub API |
+| `hackernews.tsx` | `[--count N]` | Hacker News API |
+| `monitor.tsx` | `-s "Name=url" [...]` | Live HTTP checks |
+| `gauge.tsx` | `[-g "Label:val:max:unit"]` | System stats or custom |
+| `progress.tsx` | `[-i "Label:val:max"]` | Disk usage or custom |
+| `table.tsx` | `[--json] [--stdin]` | Process list or custom |
+| `list.tsx` | `[-i "text:detail"] [--json]` | Nix profile or custom |
 
 ```bash
-# Via nix run (default port /dev/ttyACM0)
-nix run path:. -- clock --24h
+# Live stock ticker on display
+bun run examples/stocks.tsx AAPL MSFT BTC-USD | waveshare-display -
 
-# In dev shell
-nix develop path:.
-waveshare-display clock --24h
-waveshare-display sysmon
-waveshare-display image photo.jpg
+# Train departures
+bun run examples/departures.tsx --station-id 78805 --station "Passeig de Gràcia" | waveshare-display -
 
-# Custom port
-waveshare-display -p /dev/ttyUSB0 clock --24h
+# Site monitoring
+bun run examples/monitor.tsx -s "GitHub=https://github.com" -s "Google=https://google.com" | waveshare-display -
 ```
 
 ## Architecture
 
 ```
-Host (Python)                    ESP32-P4
-┌────────────────┐    UART      ┌──────────────────┐
-│ waveshare-     │ ── DWBP ───→ │ main.rs          │
-│   display      │ ←── ACK ──── │  ↓ WebP decode   │
-│ render → WebP  │              │  ↓ RGB565 convert│
-└────────────────┘              │  ↓ blit to FB    │
-                                │  ↓ cache flush   │
-                                │ MIPI DSI → LCD   │
-                                └──────────────────┘
+genui/
+  src/
+    library.tsx     Component definitions (schema + renderer)
+    emit.tsx        JSX → openui-lang emitter
+    openui.tsx      openui-lang → React element parser
+    tokens.ts       Design tokens (spacing, colors, fonts)
+    theme.ts        Base16 theme loading
+    render.ts       satori → resvg → sharp pipeline
+    display.ts      Serial protocol (DWBP chunked)
+    index.tsx       CLI entry point
+  examples/
+    *.tsx           Production scripts (live data, CLI args)
+  scripts/
+    screenshots.tsx  Render mock JSX to PNG (deterministic)
 ```
 
-- **`components/bsp/`** — C component: MIPI DSI display init (ST7703 vendor commands), UART driver
-- **`src/main.rs`** — Rust: WebP decoding, RGB565 conversion, framebuffer blit, chunked protocol
-- **`host/`** — Python: `display.py` (protocol), `widgets.py` (render functions), `waveshare_display.py` (CLI)
-- **`scripts/`** — Screenshot generation
-- **`flake.nix`** — Nix flake: dev shell, CLI package, flash app
+## Protocol
 
-## Performance
+WebP frames over UART at 921600 baud:
 
-| Metric | Value |
-|--------|-------|
-| Frame size (raw) | 1012 KB (720×720 RGB565) |
-| Typical WebP size | 5–60 KB |
-| Transfer time | 0.1–0.7s per frame |
-| Compression ratio | 15–200× vs raw |
+```
+Header: "DWBP" (4B) + length (u32 LE) + chunk_size (u16 LE) + reserved (u16)
+Flow:   header → ACK → [chunk → ACK]... → done ACK
+```
+
+## Build
+
+```bash
+# Firmware
+nix develop path:. --command make flash
+
+# Host CLI
+cd genui && bun install
+
+# Screenshots (mock data, no network)
+cd genui && bun run screenshots
+```
 
 ## License
 

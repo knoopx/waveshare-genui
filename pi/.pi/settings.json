@@ -1,0 +1,11 @@
+{
+  "defaultProvider": "local",
+  "defaultModel": "unsloth/Qwen3.5-4B-GGUF",
+  "packages": ["@marcfargas/pi-heartbeat"],
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 4096,
+    "keepRecentTokens": 8000
+  },
+  "quietStartup": true
+}
