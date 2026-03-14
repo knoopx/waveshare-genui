@@ -1,5 +1,6 @@
 use std::io::Cursor;
 use std::ptr;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Result};
 use image_webp::WebPDecoder;
@@ -17,11 +18,53 @@ const LCD_W: usize = 720;
 const LCD_H: usize = 720;
 const BPP: usize = 2;
 const FB_SIZE: usize = LCD_W * LCD_H * BPP;
+const ACTIVE_BRIGHTNESS: i32 = 100;
+const SLEEP_TIMEOUT: Duration = Duration::from_secs(60);
+const UART_POLL_TIMEOUT_MS: u32 = 250;
+
+// Priority levels (header byte 10)
+const PRIO_LOW: u8 = 0x00;
+const PRIO_NORMAL: u8 = 0x01;
+const PRIO_HIGH: u8 = 0x02;
+
+// Minimum display time per priority before a same-or-lower priority frame can replace it
+const MIN_DISPLAY_HIGH: Duration = Duration::from_secs(5);
+const MIN_DISPLAY_NORMAL: Duration = Duration::from_secs(3);
+const MIN_DISPLAY_LOW: Duration = Duration::from_secs(1);
 
 extern "C" {
     fn esp_cache_msync(addr: *mut core::ffi::c_void, size: usize, flags: i32) -> i32;
 }
 const CACHE_MSYNC_C2M: i32 = (1 << 2) | (1 << 1);
+
+fn min_display_time(prio: u8) -> Duration {
+    match prio {
+        PRIO_HIGH => MIN_DISPLAY_HIGH,
+        PRIO_NORMAL => MIN_DISPLAY_NORMAL,
+        _ => MIN_DISPLAY_LOW,
+    }
+}
+
+fn set_display_awake(awake: bool) {
+    unsafe {
+        esp_idf_sys::bsp_display_set_brightness(if awake { ACTIVE_BRIGHTNESS } else { 0 });
+    }
+}
+
+/// Per-priority pending slot.
+struct PendingSlot {
+    fb: Vec<u8>,
+    active: bool,
+}
+
+impl PendingSlot {
+    fn new() -> Self {
+        Self {
+            fb: vec![0u8; FB_SIZE],
+            active: false,
+        }
+    }
+}
 
 fn main() -> Result<()> {
     esp_idf_sys::link_patches();
@@ -38,7 +81,7 @@ fn main() -> Result<()> {
 
     let fb_ptr = display_info.framebuffer as *mut u8;
 
-    unsafe { esp_idf_sys::bsp_display_set_brightness(100) };
+    set_display_awake(true);
 
     unsafe {
         esp_idf_sys::esp_rom_printf(b"READY\n\0".as_ptr() as *const _);
@@ -51,19 +94,64 @@ fn main() -> Result<()> {
     }
     unsafe { esp_idf_sys::uart_flush_input(0) };
 
-    // WebP receive buffer (up to 1MB)
     let mut webp_buf: Vec<u8> = vec![0u8; 1024 * 1024];
-    // RGB565 framebuffer scratch
     let mut fb_scratch: Vec<u8> = vec![0u8; FB_SIZE];
 
+    // One pending slot per priority: [low, normal, high]
+    let mut slots = [PendingSlot::new(), PendingSlot::new(), PendingSlot::new()];
+
+    // Priority and timestamp of what's currently on screen
+    let mut active_prio: u8 = PRIO_LOW;
+    let mut last_blit = Instant::now() - MIN_DISPLAY_NORMAL; // allow first frame immediately
+    let mut last_serial_activity = Instant::now();
+    let mut display_awake = true;
+
     loop {
+        // Check if the active frame's minimum display time has elapsed
+        let hold_elapsed = last_blit.elapsed() >= min_display_time(active_prio);
+
+        // Flush the highest-priority pending frame when allowed
+        if hold_elapsed {
+            // Scan high → normal → low
+            let mut flushed = false;
+            for prio in (0..3).rev() {
+                if slots[prio].active {
+                    unsafe {
+                        ptr::copy_nonoverlapping(slots[prio].fb.as_ptr(), fb_ptr, FB_SIZE);
+                        esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
+                    }
+                    active_prio = prio as u8;
+                    last_blit = Instant::now();
+                    slots[prio].active = false;
+                    flushed = true;
+                    break;
+                }
+            }
+            // If nothing was pending, no action needed
+            let _ = flushed;
+        }
+
+        if display_awake && last_serial_activity.elapsed() >= SLEEP_TIMEOUT {
+            set_display_awake(false);
+            display_awake = false;
+        }
+
         // Read first byte — could be start of DWBP or DCMD
         let mut hdr = [0u8; HEADER_SIZE];
         let n = unsafe {
-            esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, 0xFFFF_FFFF)
+            esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, UART_POLL_TIMEOUT_MS)
         };
-        if n <= 0 {
+        if n < 0 {
             continue;
+        }
+        if n == 0 {
+            continue;
+        }
+
+        last_serial_activity = Instant::now();
+        if !display_awake {
+            set_display_awake(true);
+            display_awake = true;
         }
 
         // Check if this starts a command (DCMD)
@@ -78,8 +166,14 @@ fn main() -> Result<()> {
                     continue;
                 }
                 match cmd[0] {
-                    CMD_ON => unsafe { esp_idf_sys::bsp_display_set_brightness(100) },
-                    CMD_OFF => unsafe { esp_idf_sys::bsp_display_set_brightness(0) },
+                    CMD_ON => {
+                        set_display_awake(true);
+                        display_awake = true;
+                    }
+                    CMD_OFF => {
+                        set_display_awake(false);
+                        display_awake = false;
+                    }
                     _ => {
                         send_byte(RESP_ERR);
                         continue;
@@ -107,6 +201,7 @@ fn main() -> Result<()> {
 
         let data_len = u32::from_le_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
         let chunk_size = u16::from_le_bytes([hdr[8], hdr[9]]) as usize;
+        let priority = hdr[10].min(PRIO_HIGH); // clamp to valid range
 
         if data_len == 0 || data_len > webp_buf.len() || chunk_size == 0 {
             send_byte(RESP_ERR);
@@ -160,7 +255,7 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // Convert to RGB565 and blit
+        // Convert to RGB565
         fb_scratch.fill(0);
         let x_off = (LCD_W.saturating_sub(width)) / 2;
         let y_off = (LCD_H.saturating_sub(height)) / 2;
@@ -183,9 +278,27 @@ fn main() -> Result<()> {
             }
         }
 
-        unsafe {
-            ptr::copy_nonoverlapping(fb_scratch.as_ptr(), fb_ptr, FB_SIZE);
-            esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
+        // Schedule frame based on priority
+        let can_preempt = priority > active_prio
+            || last_blit.elapsed() >= min_display_time(active_prio);
+
+        if can_preempt {
+            // Blit immediately — higher priority preempts, or hold time expired
+            unsafe {
+                ptr::copy_nonoverlapping(fb_scratch.as_ptr(), fb_ptr, FB_SIZE);
+                esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
+            }
+            active_prio = priority;
+            last_blit = Instant::now();
+            // Clear any pending frames at same or lower priority
+            for prio in 0..=(priority as usize) {
+                slots[prio].active = false;
+            }
+        } else {
+            // Queue into this priority's slot (replaces any previous at same level)
+            let slot = &mut slots[priority as usize];
+            slot.fb.copy_from_slice(&fb_scratch);
+            slot.active = true;
         }
 
         send_byte(RESP_OK);

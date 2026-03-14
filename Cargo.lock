@@ -1079,7 +1079,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "waveshare-display"
+name = "waveshare-firmware"
 version = "0.1.0"
 dependencies = [
  "anyhow",
