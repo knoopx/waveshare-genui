@@ -40,14 +40,14 @@ Command:  "DCMD" + cmd (u8) → ACK    (0x00 = off, 0x01 = on)
 ### Building
 
 ```bash
-nix develop path:. --command make flash
+cd firmware && nix develop path:.. --command make flash
 ```
 
 ### Source layout
 
 ```
-src/main.rs           Frame receiver, priority scheduler, sleep logic
-components/bsp/       Board support: display init, UART, backlight PWM
+firmware/src/main.rs           Frame receiver, priority scheduler, sleep logic
+firmware/components/bsp/       Board support: display init, UART, backlight PWM
 ```
 
 ---

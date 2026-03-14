@@ -1,5 +1,7 @@
 target/
+firmware/target/
 rust_out
+firmware/rust_out
 result
 __pycache__/
 *.pyc

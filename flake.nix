@@ -47,15 +47,16 @@
       pname = "waveshare-genui";
       version = "1.0.0";
       src = ./genui;
-      npmDepsHash = "sha256-SUzZn7YYVAwSX2AqUvOlZ6gMYHMHdnQ+XUtQps+OusU=";
+      npmDepsHash = "sha256-PZrFvxezaI39xArK75Y25TgrhphsCJ9ZbekQDA4kFSQ=";
       npmDepsFetcherVersion = 2;
       makeCacheWritable = true;
       npmFlags = ["--legacy-peer-deps"];
       dontNpmBuild = true;
+      nativeBuildInputs = [pkgs.esbuild];
       buildPhase = ''
         runHook preBuild
         mkdir -p dist
-        ./node_modules/.bin/esbuild src/index.tsx \
+        esbuild src/index.tsx \
           --bundle \
           --platform=node \
           --format=esm \
@@ -127,6 +128,7 @@
             ESP_IDF="$HOME/.espressif/esp-idf/v5.4"
             ESPTOOL="$HOME/.espressif/python_env/idf5.3_py3.13_env/bin/python $ESP_IDF/components/esptool_py/esptool/esptool.py"
 
+            cd firmware
             echo "Building firmware..."
             cargo build --release 2>&1 || true
             ./patch-tinyusb.sh target
