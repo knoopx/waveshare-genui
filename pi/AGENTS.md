@@ -24,7 +24,7 @@ items = [ListItem("Meeting", "10:00 – 11:00", "\uf017")]
 ts = Timestamp()' | waveshare-genui -
 ```
 
-Use the `waveshare-genui` skill for the full component reference and syntax.
+Use the `genui` tool to render frames directly to the display.
 
 ## Data Sources
 

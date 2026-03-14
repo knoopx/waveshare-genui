@@ -234,6 +234,32 @@ cd genui && bun run screenshots
 
 ---
 
+## Pi Demo
+
+`pi/` is a demo project for running this display as an autonomous [pi](https://github.com/badlogic/pi-mono) agent.
+
+### What it includes
+
+- `pi/AGENTS.md` — autonomous loop: gather data, choose a view, render it, sleep
+- `pi/.pi/settings.json` — default model, heartbeat package, compaction settings
+- `pi/.pi/extensions/waveshare-genui/` — local `genui` extension exposing the display tool inside pi
+- `pi/README.md` — project-specific setup notes
+
+### Running it
+
+```bash
+cd pi/
+pi
+```
+
+The demo expects:
+
+- `waveshare-genui` on `PATH`
+- a local `llama-server` on port `11434`
+- the `@marcfargas/pi-heartbeat` package, installed automatically from `pi/.pi/settings.json`
+
+---
+
 ## License
 
 MIT

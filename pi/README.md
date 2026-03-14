@@ -26,6 +26,7 @@ pi
 Everything is preconfigured:
 - Model auto-selects via `defaultProvider`/`defaultModel` in settings
 - Heartbeat package auto-installs via `packages` in settings
+- Local `genui` extension is auto-discovered from `.pi/extensions/`
 - Agent loop starts via `AGENTS.md`
 
 ## Files
@@ -34,4 +35,5 @@ Everything is preconfigured:
 |------|---------|
 | `AGENTS.md` | Autonomous loop: check sources → write openui-lang → render → sleep |
 | `.pi/settings.json` | Model default, heartbeat package, compaction |
-| `.pi/skills/waveshare-genui/SKILL.md` | openui-lang syntax, component reference, CLI usage |
+| `.pi/extensions/waveshare-genui/index.ts` | Local `genui` tool extension for rendering to the display |
+| `.pi/extensions/waveshare-genui/package.json` | Extension metadata and dependencies |
