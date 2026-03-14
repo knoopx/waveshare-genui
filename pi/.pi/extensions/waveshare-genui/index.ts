@@ -1,10 +1,15 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { StringEnum } from "@mariozechner/pi-ai";
 import { Type } from "@sinclair/typebox";
-import { library, promptOptions } from "../../../../genui/src/library.ts";
 
 const PRIORITIES = ["low", "normal", "high"] as const;
-const DESCRIPTION = `Render openui-lang to the 720×720 display.\n\n${library.prompt(promptOptions)}`;
+const DESCRIPTION = [
+  "Render openui-lang to the 720×720 display.",
+  "",
+  "Each statement uses the form `identifier = Expression`.",
+  "`root = Canvas(...)` is required as the entry point.",
+  "Supported priorities: low, normal, high.",
+].join("\n");
 
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`;
