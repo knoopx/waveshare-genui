@@ -2,22 +2,34 @@
 
 #include <string.h>
 #include "driver/gpio.h"
+#include "driver/i2c_master.h"
 #include "driver/ledc.h"
 #include "driver/uart.h"
 #include "esp_check.h"
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
+#include "esp_lcd_touch.h"
+#include "esp_lcd_touch_gt911.h"
 #include "esp_ldo_regulator.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 static const char *TAG = "bsp";
+static bool touch_initialized = false;
+static i2c_master_bus_handle_t touch_i2c_bus = NULL;
+static esp_lcd_touch_handle_t touch_handle = NULL;
+static bool touch_active = false;
+static uint16_t touch_last_x = 0;
+static uint16_t touch_last_y = 0;
+
+#define TOUCH_EDGE_MARGIN 120
 
 /* ── Pin definitions (Waveshare ESP32-P4-WIFI6-Touch-LCD-4B) ────────── */
 #define PIN_LCD_BACKLIGHT   GPIO_NUM_26
 #define PIN_LCD_RST         GPIO_NUM_27
+#define PIN_TOUCH_RST       GPIO_NUM_23
 #define LEDC_CH             0
 #define DSI_PHY_LDO_CHAN    3
 #define DSI_PHY_LDO_MV      2500
@@ -26,6 +38,10 @@ static const char *TAG = "bsp";
 #define DSI_LANE_NUM        2
 #define DSI_LANE_BITRATE    480   /* Mbps */
 #define DPI_CLK_MHZ         38
+#define TOUCH_I2C_NUM       I2C_NUM_0
+#define TOUCH_I2C_SDA       GPIO_NUM_7
+#define TOUCH_I2C_SCL       GPIO_NUM_8
+#define TOUCH_I2C_SPEED_HZ  400000
 
 /* UART for data (same as console UART0, but we take over after init) */
 #define DATA_UART_NUM       UART_NUM_0
@@ -117,6 +133,107 @@ esp_err_t bsp_display_set_brightness(int percent)
     }
     ESP_RETURN_ON_ERROR(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CH, duty), TAG, "set duty");
     return ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CH);
+}
+
+esp_err_t bsp_touch_init(void)
+{
+    if (touch_initialized) {
+        return ESP_OK;
+    }
+
+    const i2c_master_bus_config_t i2c_cfg = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = TOUCH_I2C_NUM,
+        .sda_io_num = TOUCH_I2C_SDA,
+        .scl_io_num = TOUCH_I2C_SCL,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    ESP_RETURN_ON_ERROR(i2c_new_master_bus(&i2c_cfg, &touch_i2c_bus), TAG, "touch i2c init");
+
+    const esp_lcd_touch_config_t touch_cfg = {
+        .x_max = BSP_LCD_WIDTH,
+        .y_max = BSP_LCD_HEIGHT,
+        .rst_gpio_num = PIN_TOUCH_RST,
+        .int_gpio_num = GPIO_NUM_NC,
+        .levels = {
+            .reset = 0,
+            .interrupt = 0,
+        },
+        .flags = {
+            .swap_xy = 1,
+            .mirror_x = 1,
+            .mirror_y = 0,
+        },
+    };
+
+    esp_lcd_panel_io_handle_t touch_io = NULL;
+    esp_lcd_panel_io_i2c_config_t touch_io_cfg = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
+    touch_io_cfg.scl_speed_hz = TOUCH_I2C_SPEED_HZ;
+
+    esp_err_t ret = esp_lcd_new_panel_io_i2c(touch_i2c_bus, &touch_io_cfg, &touch_io);
+    if (ret != ESP_OK) {
+        i2c_del_master_bus(touch_i2c_bus);
+        touch_i2c_bus = NULL;
+        return ret;
+    }
+
+    ret = esp_lcd_touch_new_i2c_gt911(touch_io, &touch_cfg, &touch_handle);
+    if (ret != ESP_OK) {
+        i2c_del_master_bus(touch_i2c_bus);
+        touch_i2c_bus = NULL;
+        touch_handle = NULL;
+        return ret;
+    }
+
+    touch_initialized = true;
+    return ESP_OK;
+}
+
+int bsp_touch_read_event(void)
+{
+    if (!touch_initialized || touch_handle == NULL) {
+        return BSP_TOUCH_EVENT_NONE;
+    }
+
+    if (esp_lcd_touch_read_data(touch_handle) != ESP_OK) {
+        return BSP_TOUCH_EVENT_NONE;
+    }
+
+    uint16_t x[1] = {0};
+    uint16_t y[1] = {0};
+    uint16_t strength[1] = {0};
+    uint8_t points = 0;
+    bool pressed = esp_lcd_touch_get_coordinates(touch_handle, x, y, strength, &points, 1)
+        && points > 0;
+
+    if (pressed) {
+        touch_active = true;
+        touch_last_x = x[0];
+        touch_last_y = y[0];
+        return BSP_TOUCH_EVENT_NONE;
+    }
+
+    if (!touch_active) {
+        return BSP_TOUCH_EVENT_NONE;
+    }
+
+    touch_active = false;
+
+    if (touch_last_x <= TOUCH_EDGE_MARGIN) {
+        return BSP_TOUCH_EVENT_LEFT;
+    }
+    if (touch_last_x >= BSP_LCD_WIDTH - TOUCH_EDGE_MARGIN) {
+        return BSP_TOUCH_EVENT_RIGHT;
+    }
+    if (touch_last_y <= TOUCH_EDGE_MARGIN) {
+        return BSP_TOUCH_EVENT_TOP;
+    }
+    if (touch_last_y >= BSP_LCD_HEIGHT - TOUCH_EDGE_MARGIN) {
+        return BSP_TOUCH_EVENT_BOTTOM;
+    }
+
+    return BSP_TOUCH_EVENT_TAP;
 }
 
 /* ── Display init ───────────────────────────────────────────────────── */

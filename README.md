@@ -15,7 +15,7 @@ Rust application targeting the ESP32-P4 via `esp-idf-sys`. Receives WebP-encoded
 ### Features
 
 - **Priority scheduling** — three levels (`low`, `normal`, `high`). Higher priority frames preempt lower ones; each level has a minimum display hold time (1s, 3s, 5s).
-- **Automatic sleep** — backlight turns off after 60s of no serial activity, wakes on the next received byte.
+- **Automatic sleep** — backlight turns off after 60s of no serial activity, wakes on the next received byte or a tap on the touchscreen.
 - **Power commands** — the host can explicitly turn the display on or off.
 
 ### Serial protocol

@@ -1,10 +1,34 @@
 dependencies:
+  espressif/esp_lcd_touch:
+    component_hash: 3f85a7d95af876f1a6ecca8eb90a81614890d0f03a038390804e5a77e2caf862
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=4.4.2'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.2.1
+  espressif/esp_lcd_touch_gt911:
+    component_hash: be02e243d18b9a661bc13b0d22c0a5cfa3f708cf04d6eb059772276c8c8a4d76
+    dependencies:
+    - name: espressif/esp_lcd_touch
+      registry_url: https://components.espressif.com
+      require: public
+      version: ^1.2.0
+    - name: idf
+      require: private
+      version: '>=4.4.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.2.0~1
   idf:
     source:
       type: idf
     version: 5.4.0
 direct_dependencies:
-- idf
-manifest_hash: b7143d0a4801f194373c65d2113c0e9f2b83fdcdde9667ef5eeca5ea7aec7559
+- espressif/esp_lcd_touch_gt911
+manifest_hash: 560d88b249cbb9aaede0d11936c1f6232bac4227daf5582e1e7aed82cb233552
 target: esp32p4
 version: 2.0.0

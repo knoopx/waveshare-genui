@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::io::Cursor;
 use std::ptr;
 use std::time::{Duration, Instant};
@@ -21,6 +22,7 @@ const FB_SIZE: usize = LCD_W * LCD_H * BPP;
 const ACTIVE_BRIGHTNESS: i32 = 100;
 const SLEEP_TIMEOUT: Duration = Duration::from_secs(60);
 const UART_POLL_TIMEOUT_MS: u32 = 250;
+const HISTORY_LIMIT: usize = 10;
 
 // Priority levels (header byte 10)
 const PRIO_LOW: u8 = 0x00;
@@ -32,8 +34,17 @@ const MIN_DISPLAY_HIGH: Duration = Duration::from_secs(5);
 const MIN_DISPLAY_NORMAL: Duration = Duration::from_secs(3);
 const MIN_DISPLAY_LOW: Duration = Duration::from_secs(1);
 
+const TOUCH_EVENT_NONE: i32 = 0;
+const TOUCH_EVENT_TAP: i32 = 1;
+const TOUCH_EVENT_LEFT: i32 = 2;
+const TOUCH_EVENT_RIGHT: i32 = 3;
+const TOUCH_EVENT_TOP: i32 = 4;
+const TOUCH_EVENT_BOTTOM: i32 = 5;
+
 extern "C" {
     fn esp_cache_msync(addr: *mut core::ffi::c_void, size: usize, flags: i32) -> i32;
+    fn bsp_touch_init() -> i32;
+    fn bsp_touch_read_event() -> i32;
 }
 const CACHE_MSYNC_C2M: i32 = (1 << 2) | (1 << 1);
 
@@ -51,7 +62,6 @@ fn set_display_awake(awake: bool) {
     }
 }
 
-/// Per-priority pending slot.
 struct PendingSlot {
     fb: Vec<u8>,
     active: bool,
@@ -64,6 +74,61 @@ impl PendingSlot {
             active: false,
         }
     }
+}
+
+struct History {
+    frames: VecDeque<Vec<u8>>,
+    cursor: Option<usize>,
+}
+
+impl History {
+    fn new() -> Self {
+        Self {
+            frames: VecDeque::with_capacity(HISTORY_LIMIT),
+            cursor: None,
+        }
+    }
+
+    fn push(&mut self, frame: &[u8]) {
+        if self.frames.len() == HISTORY_LIMIT {
+            self.frames.pop_front();
+        }
+        self.frames.push_back(frame.to_vec());
+        self.cursor = self.frames.len().checked_sub(1);
+    }
+
+    fn move_older(&mut self) -> Option<&[u8]> {
+        let current = self.cursor?;
+        let next = current.checked_sub(1)?;
+        self.cursor = Some(next);
+        self.frames.get(next).map(Vec::as_slice)
+    }
+
+    fn move_newer(&mut self) -> Option<&[u8]> {
+        let current = self.cursor?;
+        let next = current + 1;
+        if next >= self.frames.len() {
+            return None;
+        }
+        self.cursor = Some(next);
+        self.frames.get(next).map(Vec::as_slice)
+    }
+}
+
+fn blit_frame(src: &[u8], fb_ptr: *mut u8) {
+    unsafe {
+        ptr::copy_nonoverlapping(src.as_ptr(), fb_ptr, FB_SIZE);
+        esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
+    }
+}
+
+fn display_frame(frame: &[u8], fb_ptr: *mut u8, history: &mut History) {
+    blit_frame(frame, fb_ptr);
+    history.push(frame);
+}
+
+fn show_history_frame(frame: &[u8], fb_ptr: *mut u8) {
+    blit_frame(frame, fb_ptr);
 }
 
 fn main() -> Result<()> {
@@ -81,6 +146,11 @@ fn main() -> Result<()> {
 
     let fb_ptr = display_info.framebuffer as *mut u8;
 
+    let ret = unsafe { bsp_touch_init() };
+    if ret != esp_idf_sys::ESP_OK as i32 {
+        bail!("bsp_touch_init failed: {ret}");
+    }
+
     set_display_awake(true);
 
     unsafe {
@@ -96,39 +166,59 @@ fn main() -> Result<()> {
 
     let mut webp_buf: Vec<u8> = vec![0u8; 1024 * 1024];
     let mut fb_scratch: Vec<u8> = vec![0u8; FB_SIZE];
-
-    // One pending slot per priority: [low, normal, high]
     let mut slots = [PendingSlot::new(), PendingSlot::new(), PendingSlot::new()];
+    let mut history = History::new();
 
-    // Priority and timestamp of what's currently on screen
     let mut active_prio: u8 = PRIO_LOW;
-    let mut last_blit = Instant::now() - MIN_DISPLAY_NORMAL; // allow first frame immediately
+    let mut last_blit = Instant::now() - MIN_DISPLAY_NORMAL;
     let mut last_serial_activity = Instant::now();
     let mut display_awake = true;
 
     loop {
-        // Check if the active frame's minimum display time has elapsed
+        match unsafe { bsp_touch_read_event() } {
+            TOUCH_EVENT_NONE => {}
+            TOUCH_EVENT_TAP => {
+                last_serial_activity = Instant::now();
+                if !display_awake {
+                    set_display_awake(true);
+                    display_awake = true;
+                }
+            }
+            TOUCH_EVENT_LEFT | TOUCH_EVENT_TOP => {
+                last_serial_activity = Instant::now();
+                if !display_awake {
+                    set_display_awake(true);
+                    display_awake = true;
+                } else if let Some(frame) = history.move_older() {
+                    show_history_frame(frame, fb_ptr);
+                    last_blit = Instant::now();
+                }
+            }
+            TOUCH_EVENT_RIGHT | TOUCH_EVENT_BOTTOM => {
+                last_serial_activity = Instant::now();
+                if !display_awake {
+                    set_display_awake(true);
+                    display_awake = true;
+                } else if let Some(frame) = history.move_newer() {
+                    show_history_frame(frame, fb_ptr);
+                    last_blit = Instant::now();
+                }
+            }
+            _ => {}
+        }
+
         let hold_elapsed = last_blit.elapsed() >= min_display_time(active_prio);
 
-        // Flush the highest-priority pending frame when allowed
         if hold_elapsed {
-            // Scan high → normal → low
-            let mut flushed = false;
             for prio in (0..3).rev() {
                 if slots[prio].active {
-                    unsafe {
-                        ptr::copy_nonoverlapping(slots[prio].fb.as_ptr(), fb_ptr, FB_SIZE);
-                        esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
-                    }
+                    display_frame(&slots[prio].fb, fb_ptr, &mut history);
                     active_prio = prio as u8;
                     last_blit = Instant::now();
                     slots[prio].active = false;
-                    flushed = true;
                     break;
                 }
             }
-            // If nothing was pending, no action needed
-            let _ = flushed;
         }
 
         if display_awake && last_serial_activity.elapsed() >= SLEEP_TIMEOUT {
@@ -136,11 +226,8 @@ fn main() -> Result<()> {
             display_awake = false;
         }
 
-        // Read first byte — could be start of DWBP or DCMD
         let mut hdr = [0u8; HEADER_SIZE];
-        let n = unsafe {
-            esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, UART_POLL_TIMEOUT_MS)
-        };
+        let n = unsafe { esp_idf_sys::bsp_uart_read(hdr.as_mut_ptr(), 1, UART_POLL_TIMEOUT_MS) };
         if n < 0 {
             continue;
         }
@@ -154,7 +241,6 @@ fn main() -> Result<()> {
             display_awake = true;
         }
 
-        // Check if this starts a command (DCMD)
         if hdr[0] == CMD_MAGIC[0] {
             if read_exact(&mut hdr[1..4]).is_err() {
                 continue;
@@ -182,7 +268,6 @@ fn main() -> Result<()> {
                 send_byte(RESP_OK);
                 continue;
             }
-            // Not DCMD — check if it could be DWBP start
             if &hdr[0..4] != MAGIC {
                 continue;
             }
@@ -194,24 +279,21 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // Read rest of frame header
         if read_exact(&mut hdr[4..HEADER_SIZE]).is_err() {
             continue;
         }
 
         let data_len = u32::from_le_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
         let chunk_size = u16::from_le_bytes([hdr[8], hdr[9]]) as usize;
-        let priority = hdr[10].min(PRIO_HIGH); // clamp to valid range
+        let priority = hdr[10].min(PRIO_HIGH);
 
         if data_len == 0 || data_len > webp_buf.len() || chunk_size == 0 {
             send_byte(RESP_ERR);
             continue;
         }
 
-        // ACK header
         send_byte(RESP_OK);
 
-        // Receive WebP data in chunks
         let mut offset = 0usize;
         let mut ok = true;
         while offset < data_len {
@@ -228,7 +310,6 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // Decode WebP
         let mut decoder = match WebPDecoder::new(Cursor::new(&webp_buf[..data_len])) {
             Ok(d) => d,
             Err(_) => {
@@ -255,7 +336,6 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // Convert to RGB565
         fb_scratch.fill(0);
         let x_off = (LCD_W.saturating_sub(width)) / 2;
         let y_off = (LCD_H.saturating_sub(height)) / 2;
@@ -267,8 +347,7 @@ fn main() -> Result<()> {
                 let g = rgb_buf[src_idx + 1];
                 let b = rgb_buf[src_idx + 2];
 
-                let rgb565 =
-                    ((r as u16 & 0xF8) << 8) | ((g as u16 & 0xFC) << 3) | (b as u16 >> 3);
+                let rgb565 = ((r as u16 & 0xF8) << 8) | ((g as u16 & 0xFC) << 3) | (b as u16 >> 3);
 
                 let dst_x = x_off + x;
                 let dst_y = y_off + y;
@@ -278,24 +357,17 @@ fn main() -> Result<()> {
             }
         }
 
-        // Schedule frame based on priority
-        let can_preempt = priority > active_prio
-            || last_blit.elapsed() >= min_display_time(active_prio);
+        let can_preempt =
+            priority > active_prio || last_blit.elapsed() >= min_display_time(active_prio);
 
         if can_preempt {
-            // Blit immediately — higher priority preempts, or hold time expired
-            unsafe {
-                ptr::copy_nonoverlapping(fb_scratch.as_ptr(), fb_ptr, FB_SIZE);
-                esp_cache_msync(fb_ptr as *mut _, FB_SIZE, CACHE_MSYNC_C2M);
-            }
+            display_frame(&fb_scratch, fb_ptr, &mut history);
             active_prio = priority;
             last_blit = Instant::now();
-            // Clear any pending frames at same or lower priority
             for prio in 0..=(priority as usize) {
                 slots[prio].active = false;
             }
         } else {
-            // Queue into this priority's slot (replaces any previous at same level)
             let slot = &mut slots[priority as usize];
             slot.fb.copy_from_slice(&fb_scratch);
             slot.active = true;
@@ -308,9 +380,8 @@ fn main() -> Result<()> {
 fn read_exact(buf: &mut [u8]) -> Result<()> {
     let mut off = 0;
     while off < buf.len() {
-        let n = unsafe {
-            esp_idf_sys::bsp_uart_read(buf[off..].as_mut_ptr(), buf.len() - off, 10000)
-        };
+        let n =
+            unsafe { esp_idf_sys::bsp_uart_read(buf[off..].as_mut_ptr(), buf.len() - off, 10000) };
         if n < 0 {
             bail!("UART read error");
         }
