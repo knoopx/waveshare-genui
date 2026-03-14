@@ -2,7 +2,7 @@
 
 A toolkit for driving the [Waveshare ESP32-P4-WIFI6-Touch-LCD-4B](https://www.waveshare.com/esp32-p4-touch-lcd-4b.htm) 720×720 IPS display.
 
-| | | |
+| Reading files | Test results | Bug fix |
 |:---:|:---:|:---:|
 | ![Reading files](genui/demos/reading-files.jpg) | ![Test results](genui/demos/test-results.jpg) | ![Bug fix](genui/demos/bug-fix.jpg) |
 
@@ -172,58 +172,53 @@ emit(
 
 `Canvas` · `Header` · `Content` · `Stack` · `Card` · `Separator` · `Spacer`
 
-| | | |
+| Header | Stack | Card |
 |:---:|:---:|:---:|
 | ![Header](screenshots/components/header.png) | ![Stack](screenshots/components/stack.png) | ![Card](screenshots/components/card.png) |
-| Header | Stack | Card |
 
 #### Content
 
 `Text` · `Icon` · `Badge` · `CodeBlock` · `Alert` · `EmptyState` · `Timestamp`
 
-| | | |
+| Text | Badge & Icon | CodeBlock |
 |:---:|:---:|:---:|
 | ![Text](screenshots/components/text.png) | ![Badge & Icon](screenshots/components/badge-icon.png) | ![CodeBlock](screenshots/components/codeblock.png) |
-| Text | Badge & Icon | CodeBlock |
 
-| | |
+| Alert | EmptyState |
 |:---:|:---:|
 | ![Alert](screenshots/components/alert.png) | ![EmptyState](screenshots/components/emptystate.png) |
-| Alert | EmptyState |
 
 #### Data Display
 
 `Table` · `Col` · `List` · `ListItem` · `KeyValue` · `Stat` · `Steps` · `StepsItem` · `TagBlock` · `Tag`
 
-| | | |
+| Table | List | KeyValue |
 |:---:|:---:|:---:|
 | ![Table](screenshots/components/table.png) | ![List](screenshots/components/list.png) | ![KeyValue](screenshots/components/keyvalue.png) |
-| Table | List | KeyValue |
-| ![Stat](screenshots/components/stat.png) | ![Steps](screenshots/components/steps.png) | ![TagBlock](screenshots/components/tagblock.png) |
+
 | Stat | Steps | TagBlock |
+|:---:|:---:|:---:|
+| ![Stat](screenshots/components/stat.png) | ![Steps](screenshots/components/steps.png) | ![TagBlock](screenshots/components/tagblock.png) |
 
 #### Data Visualization
 
 `Gauge` · `ProgressBar` · `Sparkline` · `StatusDot`
 
-| | | |
+| Gauge | ProgressBar | Sparkline |
 |:---:|:---:|:---:|
 | ![Gauge](screenshots/components/gauge.png) | ![ProgressBar](screenshots/components/progressbar.png) | ![Sparkline](screenshots/components/sparkline.png) |
-| Gauge | ProgressBar | Sparkline |
 
-| |
+| StatusDot |
 |:---:|
 | ![StatusDot](screenshots/components/statusdot.png) |
-| StatusDot |
 
 #### Media
 
 `QRCode` · `Image`
 
-| | |
+| QRCode | Image |
 |:---:|:---:|
 | ![QRCode](screenshots/components/qrcode.png) | ![Image](screenshots/components/image.png) |
-| QRCode | Image |
 
 ### Installing
 
