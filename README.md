@@ -11,6 +11,15 @@ Rust firmware + generative UI toolkit for the **Waveshare ESP32-P4-WIFI6-Touch-L
 | PSRAM | 32 MB @ 200 MHz |
 | Connection | Single USB cable (CH343 USB-to-UART bridge) |
 
+## Demos
+
+Photos of the 720×720 IPS display running live genui frames driven by an AI coding agent:
+
+| | | |
+|:---:|:---:|:---:|
+| ![Reading files](genui/demos/reading-files.jpg) | ![Test results](genui/demos/test-results.jpg) | ![Bug fix](genui/demos/bug-fix.jpg) |
+| Reading source files | Test results dashboard | Bug fix summary |
+
 ## Screenshots
 
 | | | |
