@@ -1,6 +1,6 @@
 # waveshare-genui
 
-A toolkit for driving the [Waveshare ESP32-P4-WIFI6-Touch-LCD-4B](https://www.waveshare.com/esp32-p4-touch-lcd-4b.htm) 720×720 IPS display.
+A toolkit for driving the [Waveshare ESP32-P4-WIFI6-Touch-LCD-4C](https://www.waveshare.com/wiki/ESP32-P4-WIFI6-Touch-LCD-4C) 720×720 IPS display.
 
 | Reading files | Test results | Bug fix |
 |:---:|:---:|:---:|
