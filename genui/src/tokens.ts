@@ -16,7 +16,7 @@ const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 const FONT = { xs: 20, sm: 22, md: 26, lg: 30, xl: 36, "2xl": 44, "3xl": 80 } as const;
 const FONT_WEIGHT = { normal: 400, bold: 700 } as const;
 const RADIUS = { xs: 3, sm: 8, md: 16, pill: 999 } as const;
-const ICON_SIZE = { sm: 28, md: 32, lg: 40 } as const;
+const ICON_SIZE = { sm: 28, md: 32, lg: 40, xl: 48, "2xl": 64 } as const;
 const ROW = { single: 52, double: 76, detail: 48 } as const;
 
 const BG = resolveColor("base00");
@@ -42,6 +42,9 @@ export const SEMANTIC_COLOR_NAMES = [
 
 export type SemanticColor = (typeof SEMANTIC_COLOR_NAMES)[number];
 
+/** Semantic name or hex string — preserves autocomplete for semantic names. */
+export type Color = SemanticColor | (string & {});
+
 const SEMANTIC_MAP: Record<SemanticColor, () => string> = {
   default: () => FG,
   muted: surface.muted,
@@ -54,9 +57,11 @@ const SEMANTIC_MAP: Record<SemanticColor, () => string> = {
   purple: () => resolveColor("base0E"),
 };
 
-export function semanticColor(name: string): string {
+export function semanticColor(name: SemanticColor | (string & {})): string {
   const fn = SEMANTIC_MAP[name as SemanticColor];
-  return fn ? fn() : FG;
+  if (fn) return fn();
+  if (name.startsWith("#")) return name;
+  return FG;
 }
 
 // ─── Icon registry ────────────────────────────────────────────────────────────
@@ -79,6 +84,10 @@ const ICONS = {
   edit: "\uf044",
   sync: "\uf021",
   refresh: "\uf021",
+  filter: "\uf0b0",
+  layers: "\uf0328",
+  compass: "\uf14e",
+  map: "\uf279",
 
   // Objects
   clock: "\uf017",
@@ -86,6 +95,7 @@ const ICONS = {
   mail: "\uf0e0",
   bell: "\uf0f3",
   lock: "\uf023",
+  key: "\uf084",
   globe: "\uf0ac",
   link: "\uf0c1",
   file: "\uf15b",
@@ -96,6 +106,7 @@ const ICONS = {
   camera: "\uf030",
   lightbulb: "\uf0eb",
   bolt: "\uf0e7",
+  fire: "\uf06d",
   tag: "\uf02c",
   bookmark: "\uf02e",
   star: "\uf005",
@@ -103,12 +114,35 @@ const ICONS = {
   user: "\uf007",
   users: "\uf0c0",
   cart: "\uf07a",
+  box: "\ued75",
+  clipboard: "\uf07f",
+  pin: "\uf08d",
+  wrench: "\uf0ad",
+  eye: "\uf06e",
+  hash: "\uf292",
+  at: "\uf1fa",
+  percent: "\uf295",
+  infinity: "\uedfe",
+  fingerprint: "\uee40",
   database: "\uf1c0",
   server: "\uf233",
   desktop: "\uf108",
   cloud: "\uf0c2",
   wifi: "\uf1eb",
+  bluetooth: "\uf293",
   rss: "\uf09e",
+  power: "\uf011",
+  battery: "\uf0079",
+  phone: "\uf095",
+  headphones: "\uf025",
+  microphone: "\uf130",
+
+  // Weather
+  sun: "\uf185",
+  moon: "\uf186",
+  rain: "\uf0e9",
+  snow: "\uf2dc",
+  wind: "\uef16",
 
   // Arrows / Direction
   up: "\uf062",
@@ -141,7 +175,7 @@ const ICONS = {
   github: "\uf09b",
   terminal: "\uf120",
   cpu: "\uf2db",
-  memory: "\uf538",
+  memory: "\uefc5",
   disk: "\uf0a0",
   thermometer: "\uf2c9",
 
@@ -155,6 +189,39 @@ const ICONS = {
   react: "\uf41b",
   rust: "\ue7a8",
   python: "\ue73c",
+  typescript: "\ue8ca",
+  javascript: "\ue74e",
+  nodejs: "\ue719",
+  npm: "\ue71e",
+  java: "\ue738",
+  go: "\ue724",
+  ruby: "\ue739",
+  php: "\ue73d",
+  swift: "\ue755",
+  kotlin: "\ue81b",
+  lua: "\ue826",
+  vim: "\ue7c5",
+  neovim: "\ue83a",
+  kubernetes: "\ue81d",
+  terraform: "\ue8bd",
+  aws: "\ue7ad",
+  linux: "\uf17c",
+  windows: "\uf17a",
+  apple: "\uf179",
+  android: "\uf17b",
+  chrome: "\uf268",
+  firefox: "\uf269",
+
+  // Social
+  hackernews: "\uf2e5",
+  reddit: "\uf1a1",
+  twitter: "\uf099",
+  discord: "\uf1ff",
+  slack: "\uf198",
+  telegram: "\uf2c6",
+  youtube: "\uf16a",
+  twitch: "\uf1e8",
+  spotify: "\uf1bc",
 
   // Misc
   circle: "\uf111",
@@ -164,11 +231,20 @@ const ICONS = {
   trophy: "\uf091",
   monitor: "\uf21b",
   qrcode: "\uf029",
-  palette: "\uf53f",
+  palette: "\uefcc",
 } as const;
 
 export type IconName = keyof typeof ICONS;
 export const ICON_NAMES = Object.keys(ICONS) as IconName[];
+
+export const GAUGE_SIZE_NAMES = ["sm", "md", "lg", "xl"] as const;
+export type GaugeSize = (typeof GAUGE_SIZE_NAMES)[number];
+
+export const ICON_SIZE_NAMES = ["sm", "md", "lg", "xl", "2xl"] as const;
+export type IconSize = (typeof ICON_SIZE_NAMES)[number];
+
+export const QRCODE_SIZE_NAMES = ["sm", "md", "lg"] as const;
+export type QRCodeSize = (typeof QRCODE_SIZE_NAMES)[number];
 
 export function resolveIcon(name: string): string {
   return ICONS[name as IconName] ?? name;
@@ -211,11 +287,11 @@ export const UI = {
     lineHeight: 1.2,
   },
   icon: {
-    defaultSize: ICON_SIZE.sm,
+    size: ICON_SIZE,
   },
   badge: {
     fontSize: FONT.sm,
-    paddingX: SPACE.sm,
+    paddingX: SPACE.md,
     paddingY: SPACE.xs,
     radius: RADIUS.pill,
   },
@@ -289,7 +365,7 @@ export const UI = {
     height: 20,
   },
   gauge: {
-    defaultSize: 240,
+    size: { sm: 160, md: 240, lg: 320, xl: 480 } as const,
     stroke: 14,
     arcStart: -135,
     arcEnd: 135,
@@ -329,7 +405,7 @@ export const UI = {
     textSize: FONT.sm,
   },
   qrcode: {
-    defaultSize: 400,
+    size: { sm: 200, md: 400, lg: 480 } as const,
   },
   image: {
     defaultWidth: DISPLAY.width,

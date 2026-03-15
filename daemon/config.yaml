@@ -1,0 +1,148 @@
+# ── Display ──────────────────────────────────────────────────
+display:
+  port: /dev/ttyACM0
+  rotate: 180
+
+# ── Location ─────────────────────────────────────────────────
+location:
+  lat: 41.39
+  lon: 2.17
+  city: Barcelona
+
+# ── Sources ──────────────────────────────────────────────────
+sources:
+  window:
+    cycle: 5
+    fallback: [clock, weather]
+
+  media: {}
+  system:
+    threshold: 85
+    poll: 5
+  network: {}
+  notifications:
+    revert: 5
+  mail:
+    poll: 120
+    accounts:
+      - email: victor@slng.ai
+        query: "is:unread in:inbox"
+        time: "9:00-18:00"
+        days: weekdays
+      - email: knoopx@gmail.com
+        query: "is:unread in:inbox"
+  calendar:
+    poll: 60
+    alert: 5
+    accounts:
+      - email: victor@slng.ai
+        time: "9:00-18:00"
+        days: weekdays
+      - email: knoopx@gmail.com
+  volume:
+    poll: 1
+  idle:
+    screen: weather
+    poll: 30
+  clock:
+    interval: 15
+  usb: {}
+  build:
+    poll: 3
+    patterns:
+      - { re: "\\bcargo\\s+(build|test|check|clippy)\\b", name: Cargo }
+      - { re: "\\bbun\\s+(test|build|run\\s+build)\\b", name: Bun }
+      - { re: "\\bvitest\\b", name: Vitest }
+      - { re: "\\btsc\\b", name: TypeScript }
+      - { re: "\\bnix\\s+build\\b", name: Nix }
+      - { re: "\\bnh\\s+(os|home)\\s+switch\\b", name: nh }
+      - { re: "\\bmake\\b", name: Make }
+      - { re: "\\bpytest\\b", name: pytest }
+      - { re: "\\beslint\\b", name: ESLint }
+  sleep:
+    wake_screens: [mail, calendar]
+    wake_delay: 15
+  screenlock:
+    unlock_screens: [mail, calendar]
+    unlock_delay: 15
+  disks: {}
+  updates:
+    poll: 21600
+  commute:
+    station_id: "78805"
+    station_name: "Passeig de Gràcia"
+  birthdays: {}
+  weather_alerts: {}
+  summary:
+    hour: 18
+  stocks:
+    poll: 1800
+    initial_delay: 30
+    symbols: [AAPL, MSFT, BTC-USD]
+
+# ── Window Rules ─────────────────────────────────────────────
+# title: regex with named captures. $name in screen args substituted from groups.
+rules:
+  # Firefox: GitHub/GitLab page → PRs + CI
+  - app: firefox
+    title: /^(?<repo>[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+).*(?:github|gitlab)/i
+    screens:
+      - "prs $repo"
+      - "ci $repo"
+
+  # Firefox: default
+  - app: firefox
+    screens: [mail, calendar, hackernews, lobsters, "reddit nixos"]
+
+  # VSCode: slng work projects
+  - app: code
+    title: /- (?<project>slng|gateway|auth-gateway|backend|frontend|modal-deployments|gateway-specs) - Visual Studio Code$/i
+    screens:
+      - "vcs ~/Projects/slng/$project"
+      - "prs slng-ai/$project"
+      - "ci slng-ai/$project"
+
+  # VSCode: personal projects
+  - app: code
+    title: /- (?<project>\S+) - Visual Studio Code$/
+    screens:
+      - "vcs ~/Projects/knoopx/$project"
+      - "prs knoopx/$project"
+      - "ci knoopx/$project"
+
+  # Kitty: slng paths
+  - app: kitty
+    title: /\/s(?:lng)?\/.*?(?<project>[^\/\s]+)\s*$/i
+    screens:
+      - "vcs ~/Projects/slng/$project"
+      - "prs slng-ai/$project"
+      - "ci slng-ai/$project"
+
+  # Kitty: ~/.nix config
+  - app: kitty
+    title: /\.nix\b/
+    screens:
+      - "nixos ~/.nix"
+      - "vcs ~/.nix"
+
+  # Kitty: pi agent
+  - app: kitty
+    title: /^π\s+-\s+(?<project>.+)$/
+    screens:
+      - "vcs ~/Projects/knoopx/$project"
+      - "prs knoopx/$project"
+      - "ci knoopx/$project"
+
+  # Kitty: default
+  - app: kitty
+    title: /(?<project>[^\/\s]+)\s*$/
+    screens:
+      - "vcs ~/Projects/knoopx/$project"
+      - "prs knoopx/$project"
+      - "ci knoopx/$project"
+
+  - app: org.gnome.Nautilus
+    screens: [disk]
+
+  - app: org.gnome.Settings
+    screens: [sysmon]

@@ -3,16 +3,16 @@ import React from "react";
 import { toOpenUILang } from "./openui-emitter";
 import { parseOpenUILang } from "./openui-parser";
 import { library } from "./library";
-import * as _C from "./components";
+import * as _C from "./components/openui";
 
 // DefinedComponent objects work as JSX element types at runtime — the emitter
 // traverses the tree structurally without calling them. Cast so TypeScript
 // accepts them in JSX position.
 const C = _C as unknown as Record<string, React.FC<any>>;
 const {
-  Canvas, Header, Content, Text, Timestamp, Stack, Badge, Icon,
+  Canvas, Header, Text, Timestamp, Row, Col, Badge, Icon,
   Separator, Spacer, Card, Alert, EmptyState, KeyValue, Stat,
-  StatusDot, Gauge, ProgressBar, Sparkline, Table, Col, List,
+  StatusDot, Gauge, ProgressBar, Sparkline, Table, TableCol, List,
   ListItem, QRCode,
 } = C;
 
@@ -41,18 +41,18 @@ describe("openui-emitter", () => {
 
   describe("given a standard page layout", () => {
     describe("when emitting", () => {
-      it("then includes Header, Content, and Timestamp", () => {
+      it("then includes Header, Col, and Timestamp", () => {
         const source = roundtrip(
           <Canvas>
             <Header icon="\uf021" title="Test Title" subtitle="Sub" />
-            <Content>
-              <Text content="Hello" />
-            </Content>
+            <Col>
+              <Text>Hello</Text>
+            </Col>
             <Timestamp />
           </Canvas>,
         );
         expect(source).toContain("Header(");
-        expect(source).toContain("Content(");
+        expect(source).toContain("Col(");
         expect(source).toContain('"Test Title"');
         expect(source).toContain('"Hello"');
       });
@@ -64,7 +64,7 @@ describe("openui-emitter", () => {
       it("then includes size, weight, color, and align as positional args", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Text content="Bold text" size="xl" weight="bold" color="green" align="center" />
+            <Text size="xl" weight="bold" color="green" align="center">Bold text</Text>
           </Canvas>,
         );
         expect(source).toContain('"Bold text"');
@@ -89,18 +89,17 @@ describe("openui-emitter", () => {
     });
   });
 
-  describe("given a Stack with direction and gap", () => {
+  describe("given a Row with gap and alignment", () => {
     describe("when emitting", () => {
       it("then includes layout props as positional args", () => {
         const source = roundtrip(
           <Canvas>
-            <Stack direction="row" gap="md" align="center" justify="between">
-              <Text content="A" />
-              <Text content="B" />
-            </Stack>
+            <Row gap="md" align="center" justify="between">
+              <Text>A</Text>
+              <Text>B</Text>
+            </Row>
           </Canvas>,
         );
-        expect(source).toContain('"row"');
         expect(source).toContain('"md"');
         expect(source).toContain('"center"');
         expect(source).toContain('"between"');
@@ -108,14 +107,14 @@ describe("openui-emitter", () => {
     });
   });
 
-  describe("given a Stack with wrap=true", () => {
+  describe("given a Row with wrap=true", () => {
     describe("when emitting", () => {
       it("then includes the boolean wrap argument", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Stack direction="row" wrap={true}>
-              <Text content="A" />
-            </Stack>
+            <Row wrap={true}>
+              <Text>A</Text>
+            </Row>
           </Canvas>,
         );
         expect(source).toContain("true");
@@ -160,7 +159,7 @@ describe("openui-emitter", () => {
         const source = roundtrip(
           <Canvas>
             <Card>
-              <Text content="Inside card" />
+              <Text>Inside card</Text>
             </Card>
           </Canvas>,
         );
@@ -291,15 +290,15 @@ describe("openui-emitter", () => {
     });
   });
 
-  describe("given Table with Col and rows", () => {
+  describe("given Table with TableCol and rows", () => {
     describe("when emitting", () => {
       it("then emits column definitions and row data", () => {
         const source = roundtrip(
           <Canvas>
             <Table
               columns={[
-                <Col label="Name" />,
-                <Col label="Value" />,
+                <TableCol label="Name" />,
+                <TableCol label="Value" />,
               ]}
               rows={[
                 ["Alice", "100"],
@@ -309,7 +308,7 @@ describe("openui-emitter", () => {
           </Canvas>,
         );
         expect(source).toContain("Table(");
-        expect(source).toContain("Col(");
+        expect(source).toContain("TableCol(");
         expect(source).toContain('"Name"');
         expect(source).toContain('"Alice"');
       });
@@ -356,7 +355,7 @@ describe("openui-emitter", () => {
       it("then escapes quotes and backslashes", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Text content={'He said "hello"'} />
+            <Text>{'He said "hello"'}</Text>
           </Canvas>,
         );
         expect(source).toContain('\\"hello\\"');
@@ -365,7 +364,7 @@ describe("openui-emitter", () => {
       it("then escapes newlines", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Text content={"line1\nline2"} />
+            <Text>{"line1\nline2"}</Text>
           </Canvas>,
         );
         expect(source).toContain("\\n");
@@ -380,21 +379,21 @@ describe("openui-emitter", () => {
           roundtrip(
             <Canvas>
               <Header icon={"\uf201"} title="Dashboard" subtitle="Live" />
-              <Content gap="sm">
-                <Stack direction="row" gap="md" align="stretch">
+              <Col gap="sm">
+                <Row gap="md" align="stretch">
                   <Stat label="CPU" value="73" unit="%" color="green" />
                   <Stat label="RAM" value="4.2" unit="GB" color="accent" />
-                </Stack>
+                </Row>
                 <Separator />
                 <Card>
-                  <Stack direction="row" gap="sm" align="center" justify="between">
-                    <Text content="AAPL" size="md" weight="bold" color="muted" />
-                    <Text content="$178.52" size="lg" weight="bold" />
-                  </Stack>
+                  <Row gap="sm" align="center" justify="between">
+                    <Text size="md" weight="bold" color="muted">AAPL</Text>
+                    <Text size="lg" weight="bold">$178.52</Text>
+                  </Row>
                   <Sparkline values={[170, 172, 175, 173, 178]} color="green" />
                 </Card>
                 <Alert title="Notice" message="Deploy paused" icon={"\uf071"} color="yellow" />
-              </Content>
+              </Col>
               <Timestamp />
             </Canvas>,
           );
@@ -408,9 +407,9 @@ describe("openui-emitter", () => {
       it("then generates unique variable names", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Text content="A" />
-            <Text content="B" />
-            <Text content="C" />
+            <Text>A</Text>
+            <Text>B</Text>
+            <Text>C</Text>
           </Canvas>,
         );
         // Should have text, text2, text3 (or similar numbering scheme)
@@ -427,7 +426,7 @@ describe("openui-emitter", () => {
       it("then root comes first in the output", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Text content="Hello" />
+            <Text>Hello</Text>
           </Canvas>,
         );
         const lines = source.trim().split("\n");

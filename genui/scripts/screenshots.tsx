@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 /**
- * Generate deterministic screenshots from mock JSX data.
+ * Generate deterministic component screenshots from mock JSX data.
  *
- * These are NOT the live examples — they use hardcoded sample data
- * so screenshots are reproducible without network access.
+ * These use hardcoded sample data so screenshots are reproducible
+ * without network access.
  */
 
 import React from "react";
@@ -11,7 +11,7 @@ import { resolve } from "path";
 import { mkdirSync, statSync } from "fs";
 import { execFileSync } from "child_process";
 import { toOpenUILang } from "../src/openui-emitter";
-import * as _C from "../src/components";
+import * as _C from "../src/components/openui";
 import { UI } from "../src/tokens";
 
 // DefinedComponent objects work as JSX element types at runtime — the emitter
@@ -19,8 +19,8 @@ import { UI } from "../src/tokens";
 // TypeScript accepts them in JSX position.
 const C = _C as unknown as Record<string, React.FC<any>>;
 const {
-  Canvas, Header, Content, Stack, Text, Icon, Badge, Card,
-  Separator, Spacer, Table, Col, List, ListItem, Gauge,
+  Canvas, Header, Row, Col, Text, Icon, Badge, Card,
+  Separator, Spacer, Table, TableCol, List, ListItem, Gauge,
   ProgressBar, Sparkline, StatusDot, Timestamp, QRCode, Image,
   KeyValue, Stat, Alert, EmptyState, CodeBlock, Steps, StepsItem,
   Tag, TagBlock,
@@ -75,23 +75,23 @@ const COMPONENTS: Record<string, React.ReactElement> = {
 
   "text": (
     <Canvas>
-      <Content gap="md">
-        <Text content="3xl bold" size="3xl" weight="bold" />
-        <Text content="2xl default" size="2xl" />
-        <Text content="xl accent" size="xl" color="accent" />
-        <Text content="lg green" size="lg" color="green" />
-        <Text content="md muted (default size)" size="md" color="muted" />
-        <Text content="sm red" size="sm" color="red" />
-        <Text content="xs cyan" size="xs" color="cyan" />
-      </Content>
+      <Col gap="md">
+        <Text size="3xl" weight="bold">3xl bold</Text>
+        <Text size="2xl">2xl default</Text>
+        <Text size="xl" color="accent">xl accent</Text>
+        <Text size="lg" color="green">lg green</Text>
+        <Text size="md" color="muted">md muted (default size)</Text>
+        <Text size="sm" color="red">sm red</Text>
+        <Text size="xs" color="cyan">xs cyan</Text>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "badge-icon": (
     <Canvas>
-      <Content gap="lg">
-        <Stack direction="row" gap="sm" align="center" wrap={true}>
+      <Col gap="lg">
+        <Row gap="sm" align="center" wrap={true}>
           <Badge label="default" />
           <Badge label="green" color="green" />
           <Badge label="red" color="red" />
@@ -100,54 +100,54 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <Badge label="orange" color="orange" />
           <Badge label="purple" color="purple" />
           <Badge label="muted" color="muted" />
-        </Stack>
+        </Row>
         <Separator />
-        <Stack direction="row" gap="lg" align="center">
-          <Icon name="check" color="green" size={40} />
-          <Icon name="warning" color="yellow" size={40} />
-          <Icon name="error" color="red" size={40} />
-          <Icon name="home" color="accent" size={40} />
-          <Icon name="calendar" color="cyan" size={40} />
-          <Icon name="music" color="purple" size={40} />
-          <Icon name="lightbulb" color="orange" size={40} />
-        </Stack>
-      </Content>
+        <Row gap="lg" align="center">
+          <Icon name="check" color="green" size="lg" />
+          <Icon name="warning" color="yellow" size="lg" />
+          <Icon name="error" color="red" size="lg" />
+          <Icon name="home" color="accent" size="lg" />
+          <Icon name="calendar" color="cyan" size="lg" />
+          <Icon name="music" color="purple" size="lg" />
+          <Icon name="lightbulb" color="orange" size="lg" />
+        </Row>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "card": (
     <Canvas>
-      <Content gap="md">
+      <Col gap="md">
         <Card>
-          <Text content='variant="card" (default)' size="md" weight="bold" />
-          <Text content="Elevated background with rounded corners." size="sm" color="muted" />
+          <Text size="md" weight="bold">{'variant="card" (default)'}</Text>
+          <Text size="sm" color="muted">Elevated background with rounded corners.</Text>
         </Card>
         <Card variant="sunk">
-          <Text content='variant="sunk"' size="md" weight="bold" />
-          <Text content="Recessed background with border." size="sm" color="muted" />
+          <Text size="md" weight="bold">{'variant="sunk"'}</Text>
+          <Text size="sm" color="muted">Recessed background with border.</Text>
         </Card>
         <Card variant="clear">
-          <Text content='variant="clear"' size="md" weight="bold" />
-          <Text content="Transparent, padding only." size="sm" color="muted" />
+          <Text size="md" weight="bold">{'variant="clear"'}</Text>
+          <Text size="sm" color="muted">Transparent, padding only.</Text>
         </Card>
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "stack": (
     <Canvas>
-      <Content gap="lg">
-        <Text content="Row with gap and alignment" size="sm" color="muted" />
-        <Stack direction="row" gap="md" align="center" justify="between">
+      <Col gap="lg">
+        <Text size="sm" color="muted">Row with gap and alignment</Text>
+        <Row gap="md" align="center" justify="between">
           <Badge label="start" color="accent" />
           <Badge label="middle" color="green" />
           <Badge label="end" color="purple" />
-        </Stack>
+        </Row>
         <Separator />
-        <Text content="Row with wrap" size="sm" color="muted" />
-        <Stack direction="row" gap="sm" align="center" wrap={true}>
+        <Text size="sm" color="muted">Row with wrap</Text>
+        <Row gap="sm" align="center" wrap={true}>
           <Badge label="A" color="accent" />
           <Badge label="B" color="green" />
           <Badge label="C" color="red" />
@@ -156,34 +156,34 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <Badge label="F" color="purple" />
           <Badge label="G" color="yellow" />
           <Badge label="H" color="muted" />
-        </Stack>
+        </Row>
         <Separator />
-        <Text content="Column with stretch" size="sm" color="muted" />
-        <Stack direction="row" gap="md" align="stretch">
+        <Text size="sm" color="muted">Column with stretch</Text>
+        <Row gap="md" align="stretch">
           <Card>
-            <Text content="Left" size="md" />
+            <Text size="md">Left</Text>
           </Card>
           <Card>
-            <Text content="Center" size="md" />
-            <Text content="More content" size="sm" color="muted" />
+            <Text size="md">Center</Text>
+            <Text size="sm" color="muted">More content</Text>
           </Card>
           <Card>
-            <Text content="Right" size="md" />
+            <Text size="md">Right</Text>
           </Card>
-        </Stack>
-      </Content>
+        </Row>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "alert": (
     <Canvas>
-      <Content gap="md">
+      <Col gap="md">
         <Alert title="Information" message="System update available for installation." icon="info" color="cyan" />
         <Alert title="Success" message="All 42 tests passed successfully." icon="check" color="green" />
         <Alert title="Warning" message="Disk usage is above 90%." icon="warning" color="yellow" />
         <Alert title="Error" message="Connection to database failed." icon="error" color="red" />
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
@@ -198,8 +198,8 @@ const COMPONENTS: Record<string, React.ReactElement> = {
   "keyvalue": (
     <Canvas>
       <Header icon="settings" title="Settings" />
-      <Content>
-        <Stack direction="column" gap="sm">
+      <Col>
+        <Col gap="sm">
           <KeyValue label="Version" value="1.4.2" />
           <Separator />
           <KeyValue label="Environment" value="Production" color="green" />
@@ -209,24 +209,24 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <KeyValue label="Last Deploy" value="2h ago" secondary="v1.4.2-rc.3" color="accent" />
           <Separator />
           <KeyValue label="Uptime" value="14d 6h" color="cyan" />
-        </Stack>
-      </Content>
+        </Col>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "stat": (
     <Canvas>
-      <Content gap="md">
-        <Stack direction="row" gap="md" align="stretch">
+      <Col gap="md">
+        <Row gap="md" align="stretch">
           <Stat label="Revenue" value="$24.8k" helper="+12% vs last week" color="green" />
           <Stat label="Orders" value="182" helper="14 pending" color="accent" />
-        </Stack>
-        <Stack direction="row" gap="md" align="stretch">
+        </Row>
+        <Row gap="md" align="stretch">
           <Stat label="Latency" value="142" unit="ms" helper="p95" color="yellow" />
           <Stat label="Errors" value="3" helper="last hour" color="red" />
-        </Stack>
-      </Content>
+        </Row>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
@@ -234,9 +234,9 @@ const COMPONENTS: Record<string, React.ReactElement> = {
   "table": (
     <Canvas>
       <Header icon="table" title="Table" />
-      <Content>
+      <Col>
         <Table
-          columns={[<Col label="Name" />, <Col label="Role" />, <Col label="Status" />]}
+          columns={[<TableCol label="Name" />, <TableCol label="Role" />, <TableCol label="Status" />]}
           rows={[
             ["Alice", "Backend", "Active"],
             ["Bob", "Frontend", "Active"],
@@ -246,7 +246,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
             ["Frank", "Backend", "Inactive"],
           ]}
         />
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
@@ -254,7 +254,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
   "list": (
     <Canvas>
       <Header icon="list" title="List" />
-      <Content>
+      <Col>
         <List>
           <ListItem text="With icon and value" secondary="Secondary text" icon="cart" value="42" />
           <ListItem text="With icon only" secondary="Another description" icon="git" />
@@ -262,96 +262,96 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <ListItem text="Plain item" secondary="Just text and secondary" />
           <ListItem text="Minimal item" />
         </List>
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "gauge": (
     <Canvas>
-      <Stack direction="row" gap="xl" align="center" justify="center" wrap={true}>
+      <Row gap="xl" align="center" justify="center" wrap={true}>
         <Gauge label="CPU" value={73} max={100} unit="%" />
         <Gauge label="RAM" value={4.2} max={8} unit="GB" />
         <Gauge label="Disk" value={120} max={500} unit="GB" />
         <Gauge label="Temp" value={62} max={100} unit="°C" color="orange" />
-      </Stack>
+      </Row>
       <Timestamp />
     </Canvas>
   ),
 
   "progressbar": (
     <Canvas>
-      <Content gap="lg">
+      <Col gap="lg">
         <ProgressBar label="Build" value={100} max={100} display="complete" color="green" />
         <ProgressBar label="Tests" value={42} max={50} display="42/50" color="accent" />
         <ProgressBar label="Deploy" value={30} max={100} display="30%" color="orange" />
         <ProgressBar label="Rollback" value={5} max={100} display="5%" color="red" />
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "sparkline": (
     <Canvas>
-      <Content gap="lg">
-        <Stack direction="column" gap="xs">
-          <Text content="Revenue (green)" size="sm" color="muted" />
+      <Col gap="lg">
+        <Col gap="xs">
+          <Text size="sm" color="muted">Revenue (green)</Text>
           <Sparkline values={[10, 25, 18, 30, 22, 35, 28, 42, 38, 50]} color="green" height={60} />
-        </Stack>
-        <Stack direction="column" gap="xs">
-          <Text content="Errors (red)" size="sm" color="muted" />
+        </Col>
+        <Col gap="xs">
+          <Text size="sm" color="muted">Errors (red)</Text>
           <Sparkline values={[5, 3, 8, 2, 6, 4, 9, 3, 7, 1]} color="red" height={60} />
-        </Stack>
-        <Stack direction="column" gap="xs">
-          <Text content="Latency (accent)" size="sm" color="muted" />
+        </Col>
+        <Col gap="xs">
+          <Text size="sm" color="muted">Latency (accent)</Text>
           <Sparkline values={[120, 135, 128, 142, 138, 155, 145, 160, 150, 142]} color="accent" height={60} />
-        </Stack>
-      </Content>
+        </Col>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "statusdot": (
     <Canvas>
-      <Content gap="md">
-        <Stack direction="row" gap="md" align="center">
+      <Col gap="md">
+        <Row gap="md" align="center">
           <StatusDot up={true} />
-          <Text content="API Server" size="md" weight="bold" />
+          <Text size="md" weight="bold">API Server</Text>
           <Spacer />
           <Badge label="healthy" color="green" />
-        </Stack>
+        </Row>
         <Separator />
-        <Stack direction="row" gap="md" align="center">
+        <Row gap="md" align="center">
           <StatusDot up={true} />
-          <Text content="Database" size="md" weight="bold" />
+          <Text size="md" weight="bold">Database</Text>
           <Spacer />
           <Badge label="healthy" color="green" />
-        </Stack>
+        </Row>
         <Separator />
-        <Stack direction="row" gap="md" align="center">
+        <Row gap="md" align="center">
           <StatusDot up={false} />
-          <Text content="CDN" size="md" weight="bold" />
+          <Text size="md" weight="bold">CDN</Text>
           <Spacer />
           <Badge label="DOWN" color="red" />
-        </Stack>
+        </Row>
         <Separator />
-        <Stack direction="row" gap="md" align="center">
+        <Row gap="md" align="center">
           <StatusDot up={true} />
-          <Text content="Cache" size="md" weight="bold" />
+          <Text size="md" weight="bold">Cache</Text>
           <Spacer />
           <Badge label="degraded" color="yellow" />
-        </Stack>
-      </Content>
+        </Row>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "codeblock": (
     <Canvas>
-      <Content gap="md">
+      <Col gap="md">
         <CodeBlock language="typescript" codeString={`interface User {\n  id: string;\n  name: string;\n  email: string;\n}\n\nfunction greet(user: User): string {\n  return \`Hello, \${user.name}!\`;\n}`} />
         <CodeBlock language="bash" codeString={`$ bun test\n 214 pass, 0 fail\n 484 expect() calls\n Ran 214 tests in 77ms`} />
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
@@ -359,22 +359,22 @@ const COMPONENTS: Record<string, React.ReactElement> = {
   "steps": (
     <Canvas>
       <Header icon="steps" title="Setup Guide" />
-      <Content>
+      <Col>
         <Steps>
           <StepsItem title="Install dependencies" details="Run bun install in the project root." />
           <StepsItem title="Configure environment" details="Copy .env.example to .env and fill in values." />
           <StepsItem title="Flash firmware" details="Connect the display via USB and run make flash." />
           <StepsItem title="Start development" details="Run bun run dev to launch the dev server." />
         </Steps>
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "tagblock": (
     <Canvas>
-      <Content gap="lg">
-        <Text content="With colors" size="sm" color="muted" />
+      <Col gap="lg">
+        <Text size="sm" color="muted">With colors</Text>
         <TagBlock>
           <Tag text="TypeScript" icon="code" color="accent" />
           <Tag text="React" icon="react" color="cyan" />
@@ -383,7 +383,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <Tag text="ESP32" color="green" />
         </TagBlock>
         <Separator />
-        <Text content="Minimal" size="sm" color="muted" />
+        <Text size="sm" color="muted">Minimal</Text>
         <TagBlock>
           <Tag text="bug" color="red" />
           <Tag text="enhancement" color="green" />
@@ -391,19 +391,19 @@ const COMPONENTS: Record<string, React.ReactElement> = {
           <Tag text="help wanted" color="yellow" />
           <Tag text="good first issue" color="purple" />
         </TagBlock>
-      </Content>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
 
   "qrcode": (
     <Canvas>
-      <Content>
-        <Stack direction="column" gap="lg" align="center" justify="center">
-          <QRCode data="https://github.com/knoopx/waveshare-genui" size={420} />
-          <Text content="Scan to visit repository" size="sm" color="muted" />
-        </Stack>
-      </Content>
+      <Col>
+        <Col gap="lg" align="center" justify="center">
+          <QRCode data="https://github.com/knoopx/waveshare-genui" size="lg" />
+          <Text size="sm" color="muted">Scan to visit repository</Text>
+        </Col>
+      </Col>
       <Timestamp />
     </Canvas>
   ),
@@ -412,11 +412,11 @@ const COMPONENTS: Record<string, React.ReactElement> = {
     const imgPath = resolve(import.meta.dir, "../fixtures/sample.png");
     return (
       <Canvas>
-        <Content>
-          <Stack direction="column" gap="lg" align="center" justify="center">
+        <Col>
+          <Col gap="lg" align="center" justify="center">
             <Image src={imgPath} width={560} height={420} borderRadius={UI.radius.md} />
-          </Stack>
-        </Content>
+          </Col>
+        </Col>
         <Timestamp />
       </Canvas>
     );

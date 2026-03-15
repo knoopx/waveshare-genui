@@ -1,0 +1,12 @@
+{
+  "extends": "../genui/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../genui",
+    "paths": { "@/*": ["src/*"] },
+    "typeRoots": ["../genui/node_modules/@types"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["."],
+  "exclude": ["node_modules"]
+}

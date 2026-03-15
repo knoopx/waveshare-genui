@@ -7,36 +7,36 @@ import { createLibrary } from "@openuidev/react-lang";
 import type { ComponentGroup, PromptOptions } from "@openuidev/react-lang";
 import { ICON_NAMES } from "./tokens";
 import {
-  Canvas,
-  Header,
-  Content,
-  Stack,
-  Alert,
-  EmptyState,
-  Card,
-  Separator,
-  Spacer,
-  Text,
-  Icon,
-  Badge,
-  KeyValue,
-  Stat,
-  Timestamp,
-  Table,
-  Col,
-  List,
-  ListItem,
-  CodeBlock,
-  Steps,
-  StepsItem,
-  Tag,
-  TagBlock,
-  Gauge,
-  ProgressBar,
-  Sparkline,
-  StatusDot,
-  QRCode,
-  Image,
+  OUICanvas as Canvas,
+  OUIHeader as Header,
+  OUIRow as Row,
+  OUICol as Col,
+  OUICard as Card,
+  OUISeparator as Separator,
+  OUISpacer as Spacer,
+  OUIText as Text,
+  OUIIcon as Icon,
+  OUIBadge as Badge,
+  OUIAlert as Alert,
+  OUIEmptyState as EmptyState,
+  OUITimestamp as Timestamp,
+  OUICodeBlock as CodeBlock,
+  OUIKeyValue as KeyValue,
+  OUIStat as Stat,
+  OUITable as Table,
+  OUITableCol as TableCol,
+  OUIList as List,
+  OUIListItem as ListItem,
+  OUISteps as Steps,
+  OUIStepsItem as StepsItem,
+  OUITagBlock as TagBlock,
+  OUITag as Tag,
+  OUIGauge as Gauge,
+  OUIProgressBar as ProgressBar,
+  OUISparkline as Sparkline,
+  OUIStatusDot as StatusDot,
+  OUIQRCode as QRCode,
+  OUIImage as Image,
 } from "./components";
 
 // ─── Component groups ─────────────────────────────────────────────────────────
@@ -44,17 +44,17 @@ import {
 const componentGroups: ComponentGroup[] = [
   {
     name: "Layout",
-    components: ["Canvas", "Header", "Content", "Stack", "Card", "Separator", "Spacer"],
+    components: ["Canvas", "Header", "Row", "Col", "Card", "Separator", "Spacer"],
     notes: [
-      "- Canvas is always root. Header + Content is the standard page pattern.",
-      '- Stack(direction="row") for horizontal, Stack(direction="column") for vertical.',
-      '- Stack(direction="row", wrap=true) for grid layouts (e.g., 2×2 gauges).',
-      '- Stack supports align="baseline" for text-aligned rows and justify="evenly" for equal spacing.',
+      "- Canvas is always root. Header + Col is the standard page pattern.",
+      "- Row for horizontal layout, Col for vertical layout.",
+      "- Row(wrap=true) for grid layouts (e.g., 2×2 gauges).",
+      '- Both support align="baseline" for text-aligned rows and justify="evenly" for equal spacing.',
       '- Card(variant="card") is elevated (default), "sunk" is recessed, "clear" is transparent.',
     ],
   },
   {
-    name: "Content",
+    name: "Content Elements",
     components: ["Text", "Icon", "Badge", "CodeBlock", "Alert", "EmptyState", "Timestamp"],
     notes: [
       `- Icon uses named icons: ${ICON_NAMES.join(", ")}.`,
@@ -69,10 +69,10 @@ const componentGroups: ComponentGroup[] = [
   },
   {
     name: "Data Display",
-    components: ["Table", "Col", "List", "ListItem", "KeyValue", "Stat", "Steps", "StepsItem", "TagBlock", "Tag"],
+    components: ["Table", "TableCol", "List", "ListItem", "KeyValue", "Stat", "Steps", "StepsItem", "TagBlock", "Tag"],
     notes: [
-      "- Table: define Col references first, then pass rows as 2D array.",
-      '- Col type="number" auto-aligns right; explicit align overrides type default.',
+      "- Table: define TableCol references first, then pass rows as 2D array.",
+      '- TableCol type="number" auto-aligns right; explicit align overrides type default.',
       "- List: define ListItem references, then pass as items array.",
       "- KeyValue is ideal for metadata and settings summaries.",
       "- Stat is ideal for dashboard KPI cards and metric grids.",
@@ -85,7 +85,7 @@ const componentGroups: ComponentGroup[] = [
     name: "Data Visualization",
     components: ["Gauge", "ProgressBar", "Sparkline", "StatusDot"],
     notes: [
-      "- Gauge: circular arc. Stack 2–4 in a row+wrap Stack for dashboard grids.",
+      "- Gauge: circular arc. Place 2–4 in a Row(wrap=true) for dashboard grids.",
       "- ProgressBar: full-width horizontal bar with label.",
       "- Sparkline: mini line chart, takes array of numbers.",
     ],
@@ -106,21 +106,21 @@ const examples: string[] = [
   `Example — Notification:
 root = Canvas([header, content, ts])
 header = Header("check", "Build Complete")
-content = Content([msg])
+content = Col([msg])
 msg = Text("All 42 tests passed. Deployed to staging.", "xl", "normal", "muted")
 ts = Timestamp()`,
 
   `Example — List with icons:
 root = Canvas([header, content, ts])
 header = Header("list", "To Do")
-content = Content([list])
+content = Col([list])
 list = List(items)
 items = [ListItem("Buy groceries", "Milk, bread, eggs", "cart"), ListItem("Review PR #284", "Auth refactor", "git", "3"), ListItem("Deploy staging", "v1.2.3 RC", "bolt")]
 ts = Timestamp()`,
 
   `Example — Gauge dashboard:
 root = Canvas([grid, ts])
-grid = Stack([g1, g2, g3, g4], "row", "md", "center", "center", true)
+grid = Row([g1, g2, g3, g4], "md", "center", "center", true)
 g1 = Gauge("CPU", 73, 100, "%")
 g2 = Gauge("RAM", 4.2, 8, "GB")
 g3 = Gauge("Disk", 120, 500, "GB")
@@ -130,14 +130,14 @@ ts = Timestamp()`,
   `Example — Cards with sparklines:
 root = Canvas([header, content, ts])
 header = Header("chart", "Market")
-content = Content([c1, c2], "sm")
+content = Col([c1, c2], "sm")
 c1 = Card([row1, spark1])
-row1 = Stack([sym1, price1], "row", "sm", "center", "between")
+row1 = Row([sym1, price1], "sm", "center", "between")
 sym1 = Text("AAPL", "md", "bold", "muted")
 price1 = Text("$178.52", "lg", "bold")
 spark1 = Sparkline([170, 172, 175, 173, 178], "green")
 c2 = Card([row2, spark2])
-row2 = Stack([sym2, price2], "row", "sm", "center", "between")
+row2 = Row([sym2, price2], "sm", "center", "between")
 sym2 = Text("MSFT", "md", "bold", "muted")
 price2 = Text("$415.80", "lg", "bold")
 spark2 = Sparkline([420, 418, 415, 416, 415], "red")
@@ -146,28 +146,28 @@ ts = Timestamp()`,
   `Example — Status monitor:
 root = Canvas([header, content, ts])
 header = Header("monitor", "Monitor", "5/6 up")
-content = Content([s1, sep1, s2, sep2, s3])
-s1 = Stack([StatusDot(true), Text("API Server", "md", "bold"), Badge("142ms", "green")], "row", "md", "center")
+content = Col([s1, sep1, s2, sep2, s3])
+s1 = Row([StatusDot(true), Text("API Server", "md", "bold"), Badge("142ms", "green")], "md", "center")
 sep1 = Separator()
-s2 = Stack([StatusDot(true), Text("Database", "md", "bold"), Badge("89ms", "green")], "row", "md", "center")
+s2 = Row([StatusDot(true), Text("Database", "md", "bold"), Badge("89ms", "green")], "md", "center")
 sep2 = Separator()
-s3 = Stack([StatusDot(false), Text("CDN", "md", "bold"), Badge("DOWN", "red")], "row", "md", "center")
+s3 = Row([StatusDot(false), Text("CDN", "md", "bold"), Badge("DOWN", "red")], "md", "center")
 ts = Timestamp()`,
 
   `Example — Table:
 root = Canvas([header, content, ts])
 header = Header("table", "Team Roster")
-content = Content([tbl])
+content = Col([tbl])
 tbl = Table(cols, rows)
-cols = [Col("Name"), Col("Role"), Col("Status")]
+cols = [TableCol("Name"), TableCol("Role"), TableCol("Status")]
 rows = [["Alice", "Backend", "Active"], ["Bob", "Frontend", "Active"], ["Carol", "DevOps", "On Leave"]]
 ts = Timestamp()`,
 
   `Example — KPI grid:
 root = Canvas([header, content, ts])
 header = Header("bars", "Overview")
-content = Content([grid], "md")
-grid = Stack([stat1, stat2, stat3, stat4], "row", "md", "stretch", "start", true)
+content = Col([grid], "md")
+grid = Row([stat1, stat2, stat3, stat4], "md", "stretch", "start", true)
 stat1 = Stat("Revenue", "$24.8k", null, "+12% vs last week", "green")
 stat2 = Stat("Orders", "182", null, "14 pending", "accent")
 stat3 = Stat("Latency", "142", "ms", "p95", "yellow")
@@ -177,7 +177,7 @@ ts = Timestamp()`,
   `Example — Empty state with alert:
 root = Canvas([header, content, ts])
 header = Header("info", "Deployments")
-content = Content([alert, empty], "lg")
+content = Col([alert, empty], "lg")
 alert = Alert("Maintenance Window", "Production deploys are paused until 22:00.", "warning", "yellow")
 empty = EmptyState("No pending deploys", "Everything is shipped. Check back after the freeze.", "check", "green")
 ts = Timestamp()`,
@@ -185,35 +185,35 @@ ts = Timestamp()`,
   `Example — Steps process:
 root = Canvas([header, content, ts])
 header = Header("steps", "Setup Guide")
-content = Content([steps])
+content = Col([steps])
 steps = Steps([StepsItem("Install dependencies", "Run bun install in the project root."), StepsItem("Configure environment", "Copy .env.example to .env and fill in values."), StepsItem("Start development", "Run bun run dev to launch the dev server.")])
 ts = Timestamp()`,
 
   `Example — Code block:
 root = Canvas([header, content, ts])
 header = Header("code", "Snippet")
-content = Content([code])
+content = Col([code])
 code = CodeBlock("typescript", "const greeting = (name: string) =>\\n  \`Hello, \${name}!\`;\\n\\nconsole.log(greeting(\\"world\\"));")
 ts = Timestamp()`,
 
   `Example — Tag cloud:
 root = Canvas([header, content, ts])
 header = Header("tag", "Topics")
-content = Content([tags])
+content = Col([tags])
 tags = TagBlock([Tag("TypeScript", "code", "accent"), Tag("React", "react", "cyan"), Tag("Rust", "rust", "orange"), Tag("NixOS", "nix", "purple"), Tag("Docker", "docker", "cyan")])
 ts = Timestamp()`,
 
   `Example — Icon with custom color:
 root = Canvas([header, content, ts])
 header = Header(Icon("warning", "red"), "Alerts")
-content = Content([row])
-row = Stack([Icon("check", "green", 40), Text("All systems operational", "lg")], "row", "md", "center")
+content = Col([row])
+row = Row([Icon("check", "green", 40), Text("All systems operational", "lg")], "md", "center")
 ts = Timestamp()`,
 ];
 
 const additionalRules: string[] = [
   "Target display is 720×720 pixels. All UIs must fit this space.",
-  "Always use Canvas as root. Standard pattern: Canvas([Header(...), Content([...]), Timestamp()]).",
+  "Always use Canvas as root. Standard pattern: Canvas([Header(...), Col([...]), Timestamp()]).",
   "Use named icons everywhere: Header(\"check\", ...), Alert(..., \"warning\"), ListItem(..., \"cart\").",
   "For custom icon color/size, use Icon element: Header(Icon(\"warning\", \"red\"), ...).",
   "Use semantic color names (default, muted, accent, green, red, yellow, cyan, orange, purple) — not hex values.",
@@ -228,8 +228,8 @@ export const library = createLibrary({
   components: [
     Canvas,
     Header,
-    Content,
-    Stack,
+    Row,
+    Col,
     Card,
     Separator,
     Spacer,
@@ -241,7 +241,7 @@ export const library = createLibrary({
     EmptyState,
     Timestamp,
     Table,
-    Col,
+    TableCol,
     List,
     ListItem,
     KeyValue,

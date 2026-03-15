@@ -18,7 +18,7 @@ Write openui-lang to stdout and pipe to `waveshare-genui -`:
 ```bash
 echo 'root = Canvas([header, content, ts])
 header = Header("\uf073", "Friday, March 13")
-content = Content([list])
+content = Col([list])
 list = List(items)
 items = [ListItem("Meeting", "10:00 – 11:00", "\uf017")]
 ts = Timestamp()' | waveshare-genui -

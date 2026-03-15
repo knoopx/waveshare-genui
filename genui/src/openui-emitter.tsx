@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { emit } from "./openui-emitter";
- *   emit(<Canvas><Text content="hi" /></Canvas>);
+ *   emit(<Canvas><Text>hi</Text></Canvas>);
  */
 
 import React from "react";
@@ -77,8 +77,22 @@ function createEmitter(library: Library) {
     // Merge JSX children into the schema's child slot
     const childSlot = order.find((k) => k === "children" || k === "items" || k === "columns" || k === "tags");
     if (props.children != null && childSlot) {
-      const kids = Array.isArray(props.children) ? props.children : [props.children];
-      resolved[childSlot] = kids;
+      if (typeof props.children === "string" || typeof props.children === "number") {
+        resolved[childSlot] = props.children;
+      } else {
+        const kids = Array.isArray(props.children) ? props.children : [props.children];
+        resolved[childSlot] = kids;
+      }
+    }
+
+    // Normalize: a single React element in a non-children prop → wrap in array.
+    // openui-lang has no bare element references — they're always in arrays.
+    for (const key of order) {
+      if (key === "children" || key === "items" || key === "columns" || key === "tags") continue;
+      const val = resolved[key];
+      if (val != null && React.isValidElement(val)) {
+        resolved[key] = [val];
+      }
     }
 
     // Positional args, trim trailing omitted

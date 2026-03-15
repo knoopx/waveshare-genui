@@ -22,7 +22,7 @@ describe("openui-parser", () => {
       "standard page layout",
       `root = Canvas([header, content, ts])
 header = Header("sync", "Title", "Subtitle")
-content = Content([msg])
+content = Col([msg])
 msg = Text("Hello world", "lg", "bold", "accent")
 ts = Timestamp()`,
     ],
@@ -30,8 +30,8 @@ ts = Timestamp()`,
       "all layout components",
       `root = Canvas([header, content, ts])
 header = Header("check", "Test")
-content = Content([stack, card, sep, spacer])
-stack = Stack([t1, t2], "row", "md", "center", "between")
+content = Col([row, card, sep, spacer])
+row = Row([t1, t2], "md", "center", "between")
 t1 = Text("Left", "md")
 t2 = Text("Right", "md")
 card = Card([t3])
@@ -43,9 +43,9 @@ ts = Timestamp()`,
     [
       "data display components",
       `root = Canvas([content, ts])
-content = Content([tbl, list, kv, stat])
+content = Col([tbl, list, kv, stat])
 tbl = Table(cols, rows)
-cols = [Col("Name"), Col("Value")]
+cols = [TableCol("Name"), TableCol("Value")]
 rows = [["Alice", "100"], ["Bob", "200"]]
 list = List([ListItem("Item 1", "desc", "list", "42")])
 kv = KeyValue("Label", "Value", "secondary", "green")
@@ -55,7 +55,7 @@ ts = Timestamp()`,
     [
       "visualization components",
       `root = Canvas([content, ts])
-content = Content([g, pb, spark, dot])
+content = Col([g, pb, spark, dot])
 g = Gauge("CPU", 73, 100, "%")
 pb = ProgressBar("Progress", 65, 100, "65%", "green")
 spark = Sparkline([10, 20, 15, 25, 30], "cyan")
@@ -65,7 +65,7 @@ ts = Timestamp()`,
     [
       "alert and empty state",
       `root = Canvas([content, ts])
-content = Content([alert, empty])
+content = Col([alert, empty])
 alert = Alert("Warning", "Something happened", "warning", "yellow")
 empty = EmptyState("No data", "Check later", "check", "muted")
 ts = Timestamp()`,
@@ -73,7 +73,7 @@ ts = Timestamp()`,
     [
       "content components (text, icon, badge)",
       `root = Canvas([content, ts])
-content = Content([txt, icon, badge])
+content = Col([txt, icon, badge])
 txt = Text("Hello", "xl", "bold", "green", "center")
 icon = Icon("check", "accent", 32)
 badge = Badge("OK", "green")
@@ -82,14 +82,14 @@ ts = Timestamp()`,
     [
       "optional props omitted",
       `root = Canvas([content, ts])
-content = Content([txt])
+content = Col([txt])
 txt = Text("Just text")
 ts = Timestamp()`,
     ],
     [
       "gauge dashboard pattern",
       `root = Canvas([grid, ts])
-grid = Stack([g1, g2, g3, g4], "row", "md", "center", "center", true)
+grid = Row([g1, g2, g3, g4], "md", "center", "center", true)
 g1 = Gauge("CPU", 73, 100, "%")
 g2 = Gauge("RAM", 4.2, 8, "GB")
 g3 = Gauge("Disk", 120, 500, "GB")
@@ -99,74 +99,74 @@ ts = Timestamp()`,
     [
       "inline component references in arrays",
       `root = Canvas([content, ts])
-content = Content([list])
+content = Col([list])
 list = List([ListItem("A"), ListItem("B"), ListItem("C")])
 ts = Timestamp()`,
     ],
     [
       "boolean props",
       `root = Canvas([content, ts])
-content = Content([row])
-row = Stack([StatusDot(true), StatusDot(false)], "row", "md")
+content = Col([row])
+row = Row([StatusDot(true), StatusDot(false)], "md")
 ts = Timestamp()`,
     ],
     [
       "numeric array values",
       `root = Canvas([content, ts])
-content = Content([spark])
+content = Col([spark])
 spark = Sparkline([1, 2, 3, 4, 5])
 ts = Timestamp()`,
     ],
     [
       "CodeBlock with language and code",
       `root = Canvas([content, ts])
-content = Content([code])
+content = Col([code])
 code = CodeBlock("typescript", "const x = 42;")
 ts = Timestamp()`,
     ],
     [
       "Steps with StepsItem children",
       `root = Canvas([content, ts])
-content = Content([steps])
+content = Col([steps])
 steps = Steps([StepsItem("First", "Do this"), StepsItem("Second", "Then this"), StepsItem("Third")])
 ts = Timestamp()`,
     ],
     [
       "TagBlock with Tag children",
       `root = Canvas([content, ts])
-content = Content([tags])
+content = Col([tags])
 tags = TagBlock([Tag("TypeScript", "code", "accent"), Tag("React", "react", "cyan"), Tag("Plain")])
 ts = Timestamp()`,
     ],
     [
       "Card with variant prop",
       `root = Canvas([content, ts])
-content = Content([c1, c2, c3])
+content = Col([c1, c2, c3])
 c1 = Card([Text("Default card")])
 c2 = Card([Text("Sunk card")], "sunk")
 c3 = Card([Text("Clear card")], "clear")
 ts = Timestamp()`,
     ],
     [
-      "Col with type prop",
+      "TableCol with type prop",
       `root = Canvas([content, ts])
-content = Content([tbl])
+content = Col([tbl])
 tbl = Table(cols, rows)
-cols = [Col("Name", "string"), Col("Score", "number")]
+cols = [TableCol("Name", "string"), TableCol("Score", "number")]
 rows = [["Alice", "95"], ["Bob", "87"]]
 ts = Timestamp()`,
     ],
     [
-      "Stack baseline align and evenly justify",
+      "Row baseline align and evenly justify",
       `root = Canvas([content, ts])
-content = Content([row])
-row = Stack([Text("A", "xl"), Text("B", "sm")], "row", "md", "baseline", "evenly")
+content = Col([row])
+row = Row([Text("A", "xl"), Text("B", "sm")], "md", "baseline", "evenly")
 ts = Timestamp()`,
     ],
     [
       "null positional arguments",
       `root = Canvas([content, ts])
-content = Content([stat])
+content = Col([stat])
 stat = Stat("Revenue", "$24.8k", null, "+12%", "green")
 ts = Timestamp()`,
     ],

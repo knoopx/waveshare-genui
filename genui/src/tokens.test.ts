@@ -67,11 +67,19 @@ describe("tokens", () => {
       });
     });
 
+    describe("given a hex color string", () => {
+      it("then passes it through", () => {
+        expect(semanticColor("#ff0000")).toBe("#ff0000");
+        expect(semanticColor("#E21B24")).toBe("#E21B24");
+      });
+    });
+
     describe("given an unknown color name", () => {
       it("then falls back to foreground", () => {
         expect(semanticColor("nonexistent")).toBe(UI.color.fg);
         expect(semanticColor("")).toBe(UI.color.fg);
       });
     });
+
   });
 });

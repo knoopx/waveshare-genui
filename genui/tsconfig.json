@@ -13,7 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "types": ["bun-types", "@types/react"],
+    "types": ["bun", "react"],
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] }
   },

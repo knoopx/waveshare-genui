@@ -66,10 +66,10 @@ openui-lang → React element tree → SVG (satori/yoga) → PNG (resvg) → Web
 
 ```bash
 # Pipe openui-lang to the display
-bun run examples/clock.tsx | waveshare-genui -
+printf 'root = Canvas([Text("Hello", "2xl")])\n' | waveshare-genui -
 
-# Render to PNG instead of sending
-bun run examples/stocks.tsx AAPL MSFT | waveshare-genui - -o stocks.png
+# Render an .oui file to PNG instead of sending
+waveshare-genui dashboard.oui -o dashboard.png
 
 # Read an .oui file
 waveshare-genui dashboard.oui
@@ -118,7 +118,7 @@ Each component is defined with a Zod schema (which sets positional argument orde
 genui/src/tokens.ts              Design tokens (single UI export)
 genui/src/components/            One file per component
   helpers.tsx                    Shared schemas, iconStyle, utilities
-  layout/                       Canvas, Header, Content, Stack, Card, Separator, Spacer
+  layout/                       Canvas, Header, Row, Col, Card, Separator, Spacer
   content/                      Text, Icon, Badge, Alert, EmptyState, Timestamp, CodeBlock
   data/                         Table, List, KeyValue, Stat, Steps, Tags
   viz/                          Gauge, ProgressBar, Sparkline, StatusDot
@@ -134,9 +134,9 @@ genui/src/openui-emitter.tsx     JSX → openui-lang text
 ```
 root = Canvas([header, content, ts])
 header = Header("\uf201", "Market")
-content = Content([card1, card2], "sm")
+content = Col([card1, card2], "sm")
 card1 = Card([row1, spark1])
-row1 = Stack([sym, price], "row", "sm", "center", "between")
+row1 = Row([sym, price], "sm", "center", "between")
 sym = Text("AAPL", "md", "bold", "muted")
 price = Text("$178.52", "lg", "bold")
 spark1 = Sparkline([170, 172, 175, 173, 178], "green")
@@ -148,17 +148,17 @@ ts = Timestamp()
 
 ```tsx
 import { emit } from "./src/openui-emitter";
-import { Canvas, Header, Content, List, ListItem, Timestamp } from "./src/components";
+import { Canvas, Header, Col, List, ListItem, Timestamp } from "./src/components";
 
 emit(
   <Canvas>
     <Header icon={"\uf201"} title="Market" />
-    <Content>
+    <Col>
       <List items={[
         <ListItem text="AAPL" secondary="$178.52" icon={"\uf201"} />,
         <ListItem text="MSFT" secondary="$415.80" icon={"\uf201"} />,
       ]} />
-    </Content>
+    </Col>
     <Timestamp />
   </Canvas>,
 );
@@ -166,15 +166,15 @@ emit(
 
 ### Components
 
-30 components across five groups.
+29 components across five groups.
 
 #### Layout
 
-`Canvas` · `Header` · `Content` · `Stack` · `Card` · `Separator` · `Spacer`
+`Canvas` · `Header` · `Row` · `Col` · `Card` · `Separator` · `Spacer`
 
-| Header | Stack | Card |
+| Header | Row / Col | Card |
 |:---:|:---:|:---:|
-| ![Header](screenshots/components/header.png) | ![Stack](screenshots/components/stack.png) | ![Card](screenshots/components/card.png) |
+| ![Header](screenshots/components/header.png) | ![Row / Col](screenshots/components/stack.png) | ![Card](screenshots/components/card.png) |
 
 #### Content
 
@@ -231,6 +231,8 @@ cd genui && bun install
 ```bash
 cd genui && bun run screenshots
 ```
+
+Live daemon views live in `daemon/screens/`.
 
 ---
 
